@@ -11,6 +11,7 @@ import (
 
 const (
 	noListeners = 20
+	size = 10
 )
 
 func main() {
@@ -47,7 +48,7 @@ func server(port int) {
 			log.Fatal(err)
 		}
 		
-		readBuffer := make([]byte, math.MaxInt16)
+		readBuffer := make([]byte, size)
 		
 		file, err := os.Open("data.txt")
 		if err != nil {
@@ -58,7 +59,6 @@ func server(port int) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		
 		
 		var bytes []byte
 		
