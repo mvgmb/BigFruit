@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package proto;
+
+message Status {
+    uint64 code = 1;
+    string message = 2;
+}
+
+message Message {
+    Status status = 1;
+    string key = 2;
+    bytes raw_data = 3;
+}
+
+// protoc --go_out=./ util.proto
