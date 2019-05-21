@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
+	"sync"
+	"time"
 
 	"github.com/mvgmb/BigFruit/client"
 	"github.com/mvgmb/BigFruit/util"
@@ -14,31 +15,39 @@ import (
 )
 
 const (
-	noThreads = 1
-	noBytes   = 3
+	noThreads       = 1
+	noBytes   int64 = 6
 )
 
 type Client struct {
 	requestor *client.Requestor
-	options   [noThreads]util.Options
 
-	done   [noThreads]chan []byte
-	errors [noThreads]chan error
-	offset int
+	done      chan []byte
+	errors    chan error
+	listElem  chan *list.Element
+	nextElem  chan *list.Element
+	listMutex *sync.Mutex
 
+	requestsList              *list.List
 	fileName, outputDirectory string
+
+	fileSize int64
+	options  [noThreads]util.Options
 }
 
-func NewBigFruitClient() (*Client, error) {
-	e := &Client{
-		offset: noThreads * noBytes,
-	}
-	return e, nil
+func NewBigFruitClient() *Client {
+	return &Client{}
 }
 
-func (e *Client) DownloadBigFile(_fileName, _outputDirectory string) error {
-	e.fileName = _fileName
-	e.outputDirectory = _outputDirectory
+func (e *Client) DownloadBigFile(fileName, outputDirectory string) error {
+	e.fileName = fileName
+	e.outputDirectory = outputDirectory
+
+	e.done = make(chan []byte)
+	e.errors = make(chan error)
+	e.nextElem = make(chan *list.Element)
+	e.listElem = make(chan *list.Element)
+	e.listMutex = &sync.Mutex{}
 
 	var err error
 	e.requestor, err = client.NewRequestor()
@@ -53,16 +62,14 @@ func (e *Client) DownloadBigFile(_fileName, _outputDirectory string) error {
 		Protocol: "tcp",
 	}
 
-	// TODO get server ports from "naming" service
+	e.fileSize = int64(60)
 
-	list := list.New()
+	// TODO get server ports and file size from "naming" service
+
+	go e.requestsListManager()
 
 	for i := 0; i < noThreads; i++ {
-		list.PushBack(i)
-		e.done[i] = make(chan []byte)
-		e.errors[i] = make(chan error)
-
-		go e.work(i)
+		go e.smallFruitWorker(i)
 	}
 
 	file, err := os.Create(e.fileName)
@@ -71,92 +78,122 @@ func (e *Client) DownloadBigFile(_fileName, _outputDirectory string) error {
 	}
 	defer file.Close()
 
-	current := 0
-	it := list.Front()
-
-	for it != nil {
-		curWorker := it
-		it = it.Next()
-
-		err = <-e.errors[curWorker.Value.(int)]
+	for e.requestsList.Front() != nil { // it != nil {
+		err = <-e.errors
 
 		if err != nil {
-			log.Println(err)
-			list.Remove(curWorker)
+			log.Println("d", err)
 			continue
 		}
 
-		bytes := <-e.done[curWorker.Value.(int)]
+		bytes := <-e.done
+		it := <-e.listElem
 
-		log.Println(string(bytes))
-
-		_, err := file.WriteAt(bytes, int64(current))
+		_, err := file.WriteAt(bytes, it.Value.(int64))
 		if err != nil {
 			log.Println(err)
 		}
 
-		current += noBytes
-
-		if it == nil {
-			it = list.Front()
-		}
+		e.listMutex.Lock()
+		e.requestsList.Remove(it)
+		e.listMutex.Unlock()
 	}
 
+	fmt.Println("Done!")
 	return nil
 }
 
-func (e *Client) work(index int) {
+func (e *Client) requestsListManager() {
+	e.requestsList = list.New()
+	for i := int64(0); i < e.fileSize; i += noBytes {
+		e.requestsList.PushBack(i)
+	}
+
+	it := e.requestsList.Front()
+
+	for it != nil {
+		cur := it
+
+		e.listMutex.Lock()
+		it = it.Next()
+		if it == nil {
+			it = e.requestsList.Front()
+		}
+		e.listMutex.Unlock()
+
+		e.nextElem <- cur
+		<-e.nextElem
+	}
+}
+
+func (e *Client) smallFruitWorker(index int) {
 	err := e.requestor.Open(&e.options[index])
 	if err != nil {
-		e.errors[index] <- err
+		e.errors <- err
 		return
 	}
 	defer e.requestor.Close(&e.options[index])
 
+	err = e.OpenFileRequest(index)
+	if err != nil {
+		e.errors <- err
+	}
+
+	curElem := <-e.nextElem
+	e.nextElem <- curElem
+
+	for {
+		time.Sleep(time.Second)
+
+		err = e.SendBytesRequest(index, curElem)
+		if err != nil {
+			e.errors <- err
+		}
+
+		curElem = <-e.nextElem
+		e.nextElem <- curElem
+	}
+}
+
+func (e *Client) OpenFileRequest(index int) error {
 	req := util.NewMessage([]byte(e.fileName), "OpenFile", "OK", 200)
 
 	res, err := e.requestor.Invoke(&req, &e.options[index])
 	if err != nil {
-		log.Println("essage")
-		e.errors[index] <- err
-		return
+		return err
 	}
 	message, ok := res.(*pb.Message)
 	if !ok {
-		e.errors[index] <- fmt.Errorf("Not a Message")
-		return
+		return fmt.Errorf("Not a Message")
 	}
 
 	if message.Status.Code != 200 {
-		e.errors[index] <- fmt.Errorf(message.Status.Message)
-		return
+		return fmt.Errorf(message.Status.Message)
+	}
+	return nil
+}
+
+func (e *Client) SendBytesRequest(index int, curElem *list.Element) error {
+	args := fmt.Sprintf("%d,%d", curElem.Value.(int64), noBytes)
+
+	req := util.NewMessage([]byte(args), "SendBytes", "OK", 200)
+
+	res, err := e.requestor.Invoke(&req, &e.options[index])
+	if err != nil {
+		return err
+	}
+	message, ok := res.(*pb.Message)
+	if !ok {
+		return fmt.Errorf("Not a Message")
 	}
 
-	current := index * noBytes
-
-	for {
-		req := util.NewMessage([]byte(strconv.Itoa(current)), "SendBytes", "OK", 200)
-
-		res, err := e.requestor.Invoke(&req, &e.options[index])
-		if err != nil {
-			e.errors[index] <- err
-			break
-		}
-
-		message, ok := res.(*pb.Message)
-		if !ok {
-			e.errors[index] <- fmt.Errorf("Not a Message")
-			break
-		}
-
-		if message.Status.Code == 100 {
-			e.errors[index] <- nil
-			e.done[index] <- message.RawData
-		} else {
-			e.errors[index] <- fmt.Errorf(message.Status.Message)
-			break
-		}
-
-		current = current + e.offset
+	if message.Status.Code == 100 {
+		e.errors <- nil
+		e.done <- message.RawData
+		e.listElem <- curElem
+	} else {
+		return fmt.Errorf(message.Status.Message)
 	}
+
+	return nil
 }

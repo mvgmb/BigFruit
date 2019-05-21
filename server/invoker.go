@@ -3,6 +3,7 @@ package server
 import (
 	"log"
 	"strconv"
+	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/mvgmb/BigFruit/bigfruit"
@@ -37,7 +38,7 @@ func (e *Invoker) Invoke() {
 	log.Printf("Listening at %s:%d\n", e.serverRequestHandler.options.Host, e.serverRequestHandler.options.Port)
 
 	bigFruit := bigfruit.NewBigFruitServer()
-	bigFruit.RegisterFilePath("data.txt", "/home/mario/Documents/git/BigFruit/core_idea/server/data.txt")
+	bigFruit.RegisterFilePath("data.txt", "/home/mario/Documents/git/BigFruit/data.txt")
 
 	// TODO register service on "naming" service
 
@@ -45,9 +46,9 @@ func (e *Invoker) Invoke() {
 		err := e.serverRequestHandler.accept()
 		if err != nil {
 			log.Println(err)
+			e.serverRequestHandler.close()
 			continue
 		}
-		defer e.serverRequestHandler.close()
 
 		for {
 			bytes, err := e.serverRequestHandler.receive()
@@ -66,6 +67,7 @@ func (e *Invoker) Invoke() {
 			if err != nil {
 				// TODO handle error
 				log.Println(err)
+				break
 			}
 
 			if req.Status.Code == 200 {
@@ -73,18 +75,25 @@ func (e *Invoker) Invoke() {
 				case "OpenFile":
 					err = bigFruit.OpenFile(string(req.RawData))
 					if err != nil {
+						log.Println(err)
 						res = util.ErrBadRequest
 					} else {
-						res = util.NewMessage([]byte("Ready to start transfer!"), string(req.RawData), "OK", 200)
+						res = util.NewMessage([]byte("Ready to start transfer!"), string(req.RawData), "Continue", 100)
 					}
 					break
 				case "SendBytes":
-					from, err := strconv.Atoi(string(req.RawData))
+					args := strings.Split(string(req.RawData), ",")
+					from, err := strconv.Atoi(args[0])
 					if err != nil {
 						res = util.ErrBadRequest
 						break
 					}
-					bytes, err := bigFruit.SeekBytes(int64(from))
+					size, err := strconv.Atoi(args[1])
+					if err != nil {
+						res = util.ErrBadRequest
+						break
+					}
+					bytes, err := bigFruit.SeekBytes(int64(from), size)
 					if err != nil {
 						res = util.NewMessage([]byte(err.Error()), "SeekBytesError", "Not Found", 404)
 						break
@@ -102,13 +111,16 @@ func (e *Invoker) Invoke() {
 			if err != nil {
 				// TODO handle error
 				log.Println(err)
+				break
 			}
 
 			err = e.serverRequestHandler.send(&bytes)
 			if err != nil {
 				// TODO handle error
 				log.Println(err)
+				break
 			}
 		}
+		e.serverRequestHandler.close()
 	}
 }

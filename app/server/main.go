@@ -10,7 +10,7 @@ import (
 var (
 	options = util.Options{
 		Host:     "localhost",
-		Port:     0,
+		Port:     8080,
 		Protocol: "tcp",
 	}
 )

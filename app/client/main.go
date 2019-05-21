@@ -7,12 +7,9 @@ import (
 )
 
 func main() {
-	client, err := bigfruit.NewBigFruitClient()
-	if err != nil {
-		log.Fatal(err)
-	}
+	client := bigfruit.NewBigFruitClient()
 
-	err = client.DownloadBigFile("data.txt", "./")
+	err := client.DownloadBigFile("data.txt", "./")
 	if err != nil {
 		log.Println(err)
 	}
