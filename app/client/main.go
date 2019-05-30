@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/mvgmb/BigFruit/client"
+	"github.com/mvgmb/BigFruit/util"
 )
 
 func main() {
@@ -12,11 +14,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	opt, err := requestor.Lookup("Object")
+	options, err := requestor.Lookup("StorageObject")
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println(opt)
+	log.Println(options)
 
 	// options := &util.Options{
 	// 	Host:     "localhost",
@@ -24,15 +26,15 @@ func main() {
 	// 	Protocol: "tcp",
 	// }
 
-	// // req := util.NewMessage(200, "OK", "Object.Download", []byte("/home/mario/Documents/git/BigFruit/data.txt"), []byte("0"), []byte("10"))
-	// req := util.NewMessage(200, "OK", "Object.Upload", []byte("/home/mario/Documents/git/BigFruit/data.txt"), []byte("0"), []byte("10"))
+	req := util.NewMessage(200, "OK", "StorageObject.Download", []byte("/home/mario/Documents/git/BigFruit/data.txt"), []byte("0"), []byte("100"))
+	// req := util.NewMessage(200, "OK", "StorageObject.Upload", []byte("/home/mario/Documents/git/BigFruit/data.txt"), []byte("0"), []byte("cafeeee"))
 
-	// requestor.Open(options)
-	// res, err := requestor.Invoke(&req, options)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// requestor.Close(options)
+	requestor.Open(options)
+	res, err := requestor.Invoke(&req, options)
+	if err != nil {
+		log.Fatal(err)
+	}
+	requestor.Close()
 
-	// fmt.Println(res)
+	fmt.Println(res)
 }

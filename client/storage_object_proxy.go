@@ -1,7 +1,7 @@
 package client
 
 // Upload writes a chunk of bytes into a file
-func Upload(filePath string, start int64, bytes []byte) error {
+func Upload(filePath string, start int64, bytes *[]byte) error {
 	return nil
 }
 

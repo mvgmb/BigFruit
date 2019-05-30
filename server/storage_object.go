@@ -4,18 +4,18 @@ import (
 	"os"
 )
 
-type Object struct {
+type StorageObject struct {
 	file *os.File
 }
 
-func NewObject() *Object {
-	return &Object{
+func NewStorageObject() *StorageObject {
+	return &StorageObject{
 		file: nil,
 	}
 }
 
 // Upload writes a chunk of bytes into a file
-func (e *Object) Upload(filePath string, start int64, bytes []byte) error {
+func (e *StorageObject) Upload(filePath string, start int64, bytes []byte) error {
 	if e.file == nil || e.file.Name() != filePath {
 		err := e.createFile(filePath)
 		if err != nil {
@@ -30,7 +30,7 @@ func (e *Object) Upload(filePath string, start int64, bytes []byte) error {
 }
 
 // Download returns a chunk of bytes from a file
-func (e *Object) Download(filePath string, start int64, offset int) ([]byte, error) {
+func (e *StorageObject) Download(filePath string, start int64, offset int) ([]byte, error) {
 	if e.file == nil || e.file.Name() != filePath {
 		err := e.openFile(filePath)
 		if err != nil {
@@ -51,7 +51,7 @@ func (e *Object) Download(filePath string, start int64, offset int) ([]byte, err
 	return readBuffer[:noBytesRead], nil
 }
 
-func (e *Object) createFile(filePath string) error {
+func (e *StorageObject) createFile(filePath string) error {
 	if e.file != nil {
 		e.file.Close()
 		e.file = nil
@@ -64,7 +64,7 @@ func (e *Object) createFile(filePath string) error {
 	return nil
 }
 
-func (e *Object) openFile(filePath string) error {
+func (e *StorageObject) openFile(filePath string) error {
 	if e.file != nil {
 		e.file.Close()
 		e.file = nil

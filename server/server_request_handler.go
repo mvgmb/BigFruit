@@ -2,21 +2,23 @@ package server
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"net"
 	"strconv"
 	"strings"
 
+	"github.com/golang/protobuf/proto"
+	pb "github.com/mvgmb/BigFruit/proto"
 	"github.com/mvgmb/BigFruit/util"
 )
 
-type serverRequestHandler struct {
-	options  util.Options
-	netConn  net.Conn
-	listener net.Listener
+type ServerRequestHandler struct {
+	Options  *util.Options
+	listener *net.Listener
 }
 
-func newServerRequestHandler(options util.Options) (*serverRequestHandler, error) {
+func NewServerRequestHandler(options *util.Options) (*ServerRequestHandler, error) {
 	addr := fmt.Sprintf("%s:%d", options.Host, options.Port)
 
 	if options.Port == 0 {
@@ -38,77 +40,78 @@ func newServerRequestHandler(options util.Options) (*serverRequestHandler, error
 
 	options.Port = uint16(num)
 
-	e := &serverRequestHandler{
-		options:  options,
-		listener: listener,
+	e := &ServerRequestHandler{
+		Options:  options,
+		listener: &listener,
 	}
 
 	return e, nil
 }
 
-func (e *serverRequestHandler) accept() error {
-	if e.netConn != nil {
-		return fmt.Errorf("Already Accepted")
+func (e *ServerRequestHandler) Loop() {
+	marshaller := util.NewMarshaller()
+	storageInvoker := NewStorageObjectInvoker()
+
+	log.Printf("Listening at %s:%d", e.Options.Host, e.Options.Port)
+
+	for {
+		netConn, err := (*e.listener).Accept()
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		for {
+			buffer := make([]byte, math.MaxInt16)
+
+			n, err := netConn.Read(buffer)
+			if err != nil {
+				log.Println(err)
+				break
+			}
+			bytes := buffer[:n]
+
+			var res proto.Message
+			req := pb.Message{}
+
+			err = marshaller.Unmarshal(&bytes, &req)
+			if err != nil {
+				// TODO handle error
+				log.Println(err)
+				break
+			}
+
+			keys := strings.Split(req.Key, ".")
+
+			if len(keys) != 2 {
+				res = util.ErrBadRequest
+			} else {
+				switch keys[0] {
+				case "StorageObject":
+					bytes, err := storageInvoker.Invoke(&req)
+					if err != nil {
+						res = util.NewMessage(400, "Bad Request", err.Error())
+						break
+					}
+					res = util.NewMessage(200, "OK", req.Key, bytes)
+				default:
+					res = util.ErrBadRequest
+				}
+			}
+
+			bytes, err = marshaller.Marshal(&res)
+			if err != nil {
+				// TODO handle error
+				log.Println(err)
+				break
+			}
+
+			_, err = netConn.Write(bytes)
+			if err != nil {
+				// TODO handle error
+				log.Println(err)
+				break
+			}
+		}
+		netConn.Close()
 	}
-
-	newConn, err := e.listener.Accept()
-	if err != nil {
-		return err
-	}
-
-	e.netConn = newConn
-	return nil
-}
-
-func (e *serverRequestHandler) open(options *util.Options) error {
-	if e.netConn != nil {
-		return fmt.Errorf("Already Connected")
-	}
-
-	netConn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", options.Host, options.Port))
-	if err != nil {
-		return err
-	}
-
-	e.netConn = netConn
-	return nil
-}
-
-func (e *serverRequestHandler) close() error {
-	if e.netConn == nil {
-		return fmt.Errorf("Already Closed")
-	}
-	netConn := e.netConn
-	e.netConn = nil
-
-	err := netConn.Close()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (e *serverRequestHandler) send(message *[]byte) error {
-	if e.netConn == nil {
-		return fmt.Errorf("Not Accepted")
-	}
-
-	_, err := e.netConn.Write(*message)
-	return err
-}
-
-func (e *serverRequestHandler) receive() ([]byte, error) {
-	if e.netConn == nil {
-		return nil, fmt.Errorf("Not Accepted")
-	}
-
-	buffer := make([]byte, math.MaxInt16)
-
-	n, err := e.netConn.Read(buffer)
-	if err != nil {
-		return nil, err
-	}
-
-	return buffer[:n], nil
 }

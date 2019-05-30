@@ -16,20 +16,20 @@ var (
 )
 
 func main() {
-	invoker, err := server.NewInvoker(options)
+	shr, err := server.NewServerRequestHandler(options)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	aor := util.AOR{
-		Host: invoker.Options.Host,
-		Port: invoker.Options.Port,
-		ID:   "Object",
+		Host: shr.Options.Host,
+		Port: shr.Options.Port,
+		ID:   "StorageObject",
 	}
 	err = server.Bind(&aor)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	invoker.Invoke()
+	shr.Loop()
 }
