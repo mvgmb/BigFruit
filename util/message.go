@@ -6,15 +6,15 @@ import (
 )
 
 var (
-	ErrUnknown            = NewMessage([]byte(""), "", "Unknown", 000)
-	ErrBadRequest         = NewMessage([]byte(""), "", "Bad Request", 400)
-	ErrUnauthorized       = NewMessage([]byte(""), "", "Unauthorized", 401)
-	ErrForbidden          = NewMessage([]byte(""), "", "Forbidden", 403)
-	ErrNotFound           = NewMessage([]byte(""), "", "Not found", 404)
-	ErrMethodNotAllowed   = NewMessage([]byte(""), "", "Method not allowed", 405)
-	ErrPayloadTooLarge    = NewMessage([]byte(""), "", "Payload too large!", 413)
-	ErrExpectationFailed  = NewMessage([]byte(""), "", "Expectation fail", 417)
-	ErrServiceUnavailable = NewMessage([]byte(""), "", "Service unavailable", 503)
+	ErrUnknown            = NewMessage(000, "Unknown", "")
+	ErrBadRequest         = NewMessage(400, "Bad Request", "")
+	ErrUnauthorized       = NewMessage(401, "Unauthorized", "")
+	ErrForbidden          = NewMessage(403, "Forbidden", "")
+	ErrNotFound           = NewMessage(404, "Not found", "")
+	ErrMethodNotAllowed   = NewMessage(405, "Method not allowed", "")
+	ErrPayloadTooLarge    = NewMessage(413, "Payload too large!", "")
+	ErrExpectationFailed  = NewMessage(417, "Expectation fail", "")
+	ErrServiceUnavailable = NewMessage(503, "Service unavailable", "")
 )
 
 // Options defines the options values
@@ -25,7 +25,7 @@ type Options struct {
 }
 
 // NewMessage creates a message
-func NewMessage(bytes []byte, key, statusMessage string, statusCode uint64) proto.Message {
+func NewMessage(statusCode uint64, statusMessage, key string, bytes ...[]byte) proto.Message {
 	status := &pb.Status{
 		Code:    statusCode,
 		Message: statusMessage,

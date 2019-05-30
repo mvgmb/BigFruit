@@ -1,8 +1,7 @@
-package server
+package naming
 
 import (
 	"log"
-	"strconv"
 
 	"github.com/golang/protobuf/proto"
 	pb "github.com/mvgmb/BigFruit/proto"
@@ -10,7 +9,6 @@ import (
 )
 
 type Invoker struct {
-	Options              *util.Options
 	serverRequestHandler *serverRequestHandler
 	marshaller           *util.Marshaller
 }
@@ -26,15 +24,12 @@ func NewInvoker(options *util.Options) (*Invoker, error) {
 	e := &Invoker{
 		serverRequestHandler: rh,
 		marshaller:           marsh,
-		Options:              &rh.options,
 	}
 	return e, nil
 }
 
 func (e *Invoker) Invoke() {
-	log.Printf("Listening at %s:%d\n", e.Options.Host, e.Options.Port)
-
-	object := NewObject()
+	log.Printf("Listening at %s:%d\n", e.serverRequestHandler.options.Host, e.serverRequestHandler.options.Port)
 
 	for {
 		err := e.serverRequestHandler.accept()
@@ -43,13 +38,11 @@ func (e *Invoker) Invoke() {
 			e.serverRequestHandler.close()
 			continue
 		}
-
 		for {
 			bytes, err := e.serverRequestHandler.receive()
 			if err != nil {
 				// TODO handle error
 				log.Println(err)
-				e.serverRequestHandler.close()
 				break
 			}
 
@@ -64,55 +57,23 @@ func (e *Invoker) Invoke() {
 				break
 			}
 
-			// Demultiplex
 			if req.Status.Code == 200 {
 				switch req.Key {
-				case "Object.Upload":
-					if len(req.RawData) != 3 {
-						log.Println("Not enough arguments: needed 3, got:", len(req.RawData))
-						res = util.ErrBadRequest
-						break
-					}
-					start, err := strconv.Atoi(string(req.RawData[1]))
+				case "Lookup":
+					result, err := lookup(string(req.RawData[0]))
 					if err != nil {
-						log.Println(err)
-						res = util.ErrBadRequest
+						res = util.ErrNotFound
 						break
 					}
-					err = object.Upload(string(req.RawData[0]), int64(start), req.RawData[2])
+					res = util.NewMessage(200, "OK", "AOR", []byte(result.String()))
+				case "Bind":
+					aor, err := util.StringToAOR(string(req.RawData[0]))
 					if err != nil {
-						log.Println(err)
-						res = util.ErrUnknown
-						break
-					}
-					res = util.NewMessage(200, "OK", "Object.Upload")
-					break
-				case "Object.Download":
-					if len(req.RawData) != 3 {
-						log.Println("Not enough arguments: needed 3, got:", len(req.RawData))
 						res = util.ErrBadRequest
 						break
 					}
-					start, err := strconv.Atoi(string(req.RawData[1]))
-					if err != nil {
-						log.Println(err)
-						res = util.ErrBadRequest
-						break
-					}
-					offset, err := strconv.Atoi(string(req.RawData[2]))
-					if err != nil {
-						log.Println(err)
-						res = util.ErrBadRequest
-						break
-					}
-					bytes, err := object.Download(string(req.RawData[0]), int64(start), offset)
-					if err != nil {
-						log.Println(err)
-						res = util.ErrBadRequest
-						break
-					}
-					res = util.NewMessage(200, "OK", "Object.Download", bytes)
-					break
+					bind(aor)
+					res = util.NewMessage(200, "OK", "", []byte(""))
 				default:
 					res = util.ErrBadRequest
 				}
@@ -134,6 +95,10 @@ func (e *Invoker) Invoke() {
 				break
 			}
 		}
-		e.serverRequestHandler.close()
+
+		err = e.serverRequestHandler.close()
+		if err != nil {
+			log.Println(err)
+		}
 	}
 }

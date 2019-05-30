@@ -1,4 +1,4 @@
-package client
+package server
 
 import (
 	"github.com/golang/protobuf/proto"
@@ -24,15 +24,15 @@ func NewRequestor() (*Requestor, error) {
 	return e, nil
 }
 
-func (e *Requestor) Open(options *util.Options) error {
+func (e *Requestor) open(options *util.Options) error {
 	return e.requestHandler.open(*options)
 }
 
-func (e *Requestor) Close() error {
+func (e *Requestor) close(options *util.Options) error {
 	return e.requestHandler.close()
 }
 
-func (e *Requestor) Invoke(req *proto.Message, options *util.Options) (proto.Message, error) {
+func (e *Requestor) invoke(req *proto.Message, options *util.Options) (proto.Message, error) {
 	data, err := e.marshaller.Marshal(req)
 	if err != nil {
 		return nil, err

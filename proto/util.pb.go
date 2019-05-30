@@ -29,9 +29,9 @@ func (m *Status) String() string { return proto1.CompactTextString(m) }
 func (*Status) ProtoMessage()    {}
 
 type Message struct {
-	Status  *Status `protobuf:"bytes,1,opt,name=status" json:"status,omitempty"`
-	Key     string  `protobuf:"bytes,2,opt,name=key" json:"key,omitempty"`
-	RawData []byte  `protobuf:"bytes,3,opt,name=raw_data,proto3" json:"raw_data,omitempty"`
+	Status  *Status  `protobuf:"bytes,1,opt,name=status" json:"status,omitempty"`
+	Key     string   `protobuf:"bytes,2,opt,name=key" json:"key,omitempty"`
+	RawData [][]byte `protobuf:"bytes,3,rep,name=raw_data,proto3" json:"raw_data,omitempty"`
 }
 
 func (m *Message) Reset()         { *m = Message{} }

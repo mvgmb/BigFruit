@@ -10,7 +10,7 @@ message Status {
 message Message {
     Status status = 1;
     string key = 2;
-    bytes raw_data = 3;
+    repeated bytes raw_data = 3;
 }
 
 // protoc --go_out=./ util.proto

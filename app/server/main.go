@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	options = util.Options{
+	options = &util.Options{
 		Host:     "localhost",
 		Port:     8080,
 		Protocol: "tcp",
@@ -16,9 +16,20 @@ var (
 )
 
 func main() {
-	invoker, err := server.NewInvoker(&options)
+	invoker, err := server.NewInvoker(options)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	aor := util.AOR{
+		Host: invoker.Options.Host,
+		Port: invoker.Options.Port,
+		ID:   "Object",
+	}
+	err = server.Bind(&aor)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	invoker.Invoke()
 }

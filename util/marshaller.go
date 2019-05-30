@@ -9,8 +9,8 @@ type Marshaller struct {
 }
 
 // NewMarshaller constructs a new Mashaller
-func NewMarshaller() (*Marshaller, error) {
-	return &Marshaller{}, nil
+func NewMarshaller() *Marshaller {
+	return &Marshaller{}
 }
 
 // Marshal serializes the message into bytes
