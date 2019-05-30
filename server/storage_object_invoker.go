@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"log"
 	"strconv"
 
 	pb "github.com/mvgmb/BigFruit/proto"
@@ -23,6 +24,7 @@ func (e *StorageObjectInvoker) Invoke(req *pb.Message) ([]byte, error) {
 		if len(req.RawData) != 3 {
 			return nil, fmt.Errorf(fmt.Sprintf("not enough arguments: needed 3, got: %d", len(req.RawData)))
 		}
+		log.Println(req)
 		start, err := strconv.Atoi(string(req.RawData[1]))
 		if err != nil {
 			return nil, err
@@ -36,7 +38,7 @@ func (e *StorageObjectInvoker) Invoke(req *pb.Message) ([]byte, error) {
 		if len(req.RawData) != 3 {
 			return nil, fmt.Errorf(fmt.Sprintf("not enough arguments: needed 3, got: %d", len(req.RawData)))
 		}
-		start, err := strconv.Atoi(string(req.RawData[1]))
+		start, err := strconv.ParseInt(string(req.RawData[1]), 10, 64)
 		if err != nil {
 			return nil, err
 		}
@@ -44,7 +46,7 @@ func (e *StorageObjectInvoker) Invoke(req *pb.Message) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		bytes, err := e.storageObject.Download(string(req.RawData[0]), int64(start), offset)
+		bytes, err := e.storageObject.Download(string(req.RawData[0]), start, offset)
 		if err != nil {
 			return nil, err
 		}
