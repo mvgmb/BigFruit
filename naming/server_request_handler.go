@@ -44,20 +44,6 @@ func (e *serverRequestHandler) accept() error {
 	return nil
 }
 
-func (e *serverRequestHandler) open(options *util.Options) error {
-	if e.netConn != nil {
-		return fmt.Errorf("Connection Already Connected")
-	}
-
-	netConn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", options.Host, options.Port))
-	if err != nil {
-		return err
-	}
-
-	e.netConn = netConn
-	return nil
-}
-
 func (e *serverRequestHandler) close() error {
 	if e.netConn == nil {
 		return fmt.Errorf("Connection Already Closed")

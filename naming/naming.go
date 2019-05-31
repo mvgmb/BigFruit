@@ -32,3 +32,31 @@ func lookup(fileName string) (*util.AOR, error) {
 
 	return &servicesTable[fileName][roundRobin], nil
 }
+
+func lookupMany(fileName string, numberOfNodes int) (*[]util.AOR, error) {
+	var listOfNodes []util.AOR
+	if _, ok := servicesTable[fileName]; !ok {
+		return nil, errors.New("404 - Service not found")
+	}
+	if len(servicesTable[fileName]) < numberOfNodes {
+		return nil, errors.New("there are less nodes than required")
+	}
+	for i := 0; i < numberOfNodes; i++ {
+		if roundRobin+1 == len(servicesTable[fileName]) {
+			roundRobin = 0
+		} else {
+			roundRobin++
+		}
+		listOfNodes = append(listOfNodes, servicesTable[fileName][roundRobin])
+	}
+	return &listOfNodes, nil
+}
+
+func lookupAll(fileName string) (*[]util.AOR, error) {
+	if _, ok := servicesTable[fileName]; !ok {
+		return nil, errors.New("404 - Service not found")
+	}
+	var listOfNodes = servicesTable[fileName]
+
+	return &listOfNodes, nil
+}

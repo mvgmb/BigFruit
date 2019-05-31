@@ -3,6 +3,9 @@ package naming
 import (
 	"log"
 
+	"encoding/binary"
+	"encoding/json"
+
 	"github.com/golang/protobuf/proto"
 	pb "github.com/mvgmb/BigFruit/proto"
 	"github.com/mvgmb/BigFruit/util"
@@ -65,7 +68,31 @@ func (e *Invoker) Invoke() {
 						res = util.ErrNotFound
 						break
 					}
-					res = util.NewMessage(200, "OK", "AOR", []byte(result.String()))
+					res = util.NewMessage(200, "OK", req.Key, []byte(result.String()))
+				case "LookupMany":
+					result, err := lookupMany(string(req.RawData[0]), int(binary.BigEndian.Uint64(req.RawData[1])))
+					if err != nil {
+						res = util.ErrNotFound
+						break
+					}
+					resultBytes, err := json.Marshal(result)
+					if err != nil {
+						res = util.ErrUnknown
+						break
+					}
+					res = util.NewMessage(200, "OK", req.Key, resultBytes)
+				case "LookupAll":
+					result, err := lookupAll(string(req.RawData[0]))
+					if err != nil {
+						res = util.ErrNotFound
+						break
+					}
+					resultBytes, err := json.Marshal(result)
+					if err != nil {
+						res = util.ErrUnknown
+						break
+					}
+					res = util.NewMessage(200, "OK", req.Key, resultBytes)
 				case "Bind":
 					aor, err := util.StringToAOR(string(req.RawData[0]))
 					if err != nil {
@@ -73,7 +100,7 @@ func (e *Invoker) Invoke() {
 						break
 					}
 					bind(aor)
-					res = util.NewMessage(200, "OK", "", []byte(""))
+					res = util.NewMessage(200, "OK", req.Key, []byte(""))
 				default:
 					res = util.ErrBadRequest
 				}
