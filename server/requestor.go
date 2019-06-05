@@ -48,7 +48,7 @@ func (e *Requestor) invoke(req *proto.Message, options *util.Options) (proto.Mes
 		return nil, err
 	}
 
-	res := pb.Message{}
+	res := pb.MessageWrapper{}
 
 	err = e.marshaller.Unmarshal(&data, &res)
 	if err != nil {

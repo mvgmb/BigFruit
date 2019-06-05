@@ -11,26 +11,26 @@ var options = util.Options{
 }
 
 func Bind(aor *util.AOR) error {
-	requestor, err := NewRequestor()
-	if err != nil {
-		return err
-	}
-	req := util.NewMessage(200, "OK", "Bind", []byte(aor.String()))
+	// requestor, err := NewRequestor()
+	// if err != nil {
+	// 	return err
+	// }
+	// req := util.NewMessageWrapper(200, "OK", "Bind", []byte(aor.String()))
 
-	err = requestor.open(&options)
-	if err != nil {
-		return err
-	}
+	// err = requestor.open(&options)
+	// if err != nil {
+	// 	return err
+	// }
 
-	_, err = requestor.invoke(&req, &options)
-	if err != nil {
-		return err
-	}
+	// _, err = requestor.invoke(&req, &options)
+	// if err != nil {
+	// 	return err
+	// }
 
-	err = requestor.close(&options)
-	if err != nil {
-		return err
-	}
+	// err = requestor.close(&options)
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }

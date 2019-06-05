@@ -11,9 +11,11 @@ type Requestor struct {
 	marshaller     *util.Marshaller
 }
 
-func NewRequestor() (*Requestor, error) {
-	rh := newClientRequestHandler()
-
+func NewRequestor(options *util.Options) (*Requestor, error) {
+	rh, err := newClientRequestHandler(options)
+	if err != nil {
+		return nil, err
+	}
 	marsh := util.NewMarshaller()
 
 	e := &Requestor{
@@ -24,16 +26,12 @@ func NewRequestor() (*Requestor, error) {
 	return e, nil
 }
 
-func (e *Requestor) Open(options *util.Options) error {
-	return e.requestHandler.open(*options)
-}
-
 func (e *Requestor) Close() error {
 	return e.requestHandler.close()
 }
 
-func (e *Requestor) Invoke(req *proto.Message, options *util.Options) (proto.Message, error) {
-	data, err := e.marshaller.Marshal(req)
+func (e *Requestor) Invoke(req proto.Message) (proto.Message, error) {
+	data, err := util.WrapMessage(req)
 	if err != nil {
 		return nil, err
 	}
@@ -47,13 +45,17 @@ func (e *Requestor) Invoke(req *proto.Message, options *util.Options) (proto.Mes
 	if err != nil {
 		return nil, err
 	}
+	wrapper := &pb.MessageWrapper{}
 
-	res := pb.Message{}
-
-	err = e.marshaller.Unmarshal(&data, &res)
+	err = e.marshaller.Unmarshal(&data, wrapper)
 	if err != nil {
 		return nil, err
 	}
 
-	return &res, nil
+	res, err := util.UnwrapMessage(wrapper)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }

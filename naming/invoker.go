@@ -3,9 +3,6 @@ package naming
 import (
 	"log"
 
-	"encoding/binary"
-	"encoding/json"
-
 	"github.com/golang/protobuf/proto"
 	pb "github.com/mvgmb/BigFruit/proto"
 	"github.com/mvgmb/BigFruit/util"
@@ -51,7 +48,7 @@ func (e *Invoker) Invoke() {
 
 			var res proto.Message
 
-			req := pb.Message{}
+			req := pb.MessageWrapper{}
 
 			err = e.marshaller.Unmarshal(&bytes, &req)
 			if err != nil {
@@ -60,51 +57,47 @@ func (e *Invoker) Invoke() {
 				break
 			}
 
-			if req.Status.Code == 200 {
-				switch req.Key {
-				case "Lookup":
-					result, err := lookup(string(req.RawData[0]))
-					if err != nil {
-						res = util.ErrNotFound
-						break
-					}
-					res = util.NewMessage(200, "OK", req.Key, []byte(result.String()))
-				case "LookupMany":
-					result, err := lookupMany(string(req.RawData[0]), int(binary.BigEndian.Uint64(req.RawData[1])))
-					if err != nil {
-						res = util.ErrNotFound
-						break
-					}
-					resultBytes, err := json.Marshal(result)
-					if err != nil {
-						res = util.ErrUnknown
-						break
-					}
-					res = util.NewMessage(200, "OK", req.Key, resultBytes)
-				case "LookupAll":
-					result, err := lookupAll(string(req.RawData[0]))
-					if err != nil {
-						res = util.ErrNotFound
-						break
-					}
-					resultBytes, err := json.Marshal(result)
-					if err != nil {
-						res = util.ErrUnknown
-						break
-					}
-					res = util.NewMessage(200, "OK", req.Key, resultBytes)
-				case "Bind":
-					aor, err := util.StringToAOR(string(req.RawData[0]))
-					if err != nil {
-						res = util.ErrBadRequest
-						break
-					}
-					bind(aor)
-					res = util.NewMessage(200, "OK", req.Key, []byte(""))
-				default:
-					res = util.ErrBadRequest
-				}
-			} else {
+			switch req.Type {
+			// case "Lookup":
+			// 	result, err := lookup(string(req.RawData[0]))
+			// 	if err != nil {
+			// 		res = util.ErrNotFound
+			// 		break
+			// 	}
+			// 	res = util.NewMessage(200, "OK", req.Key, []byte(result.String()))
+			// case "LookupMany":
+			// 	result, err := lookupMany(string(req.RawData[0]), int(binary.BigEndian.Uint64(req.RawData[1])))
+			// 	if err != nil {
+			// 		res = util.ErrNotFound
+			// 		break
+			// 	}
+			// 	resultBytes, err := json.Marshal(result)
+			// 	if err != nil {
+			// 		res = util.ErrUnknown
+			// 		break
+			// 	}
+			// 	res = util.NewMessage(200, "OK", req.Key, resultBytes)
+			// case "LookupAll":
+			// 	result, err := lookupAll(string(req.RawData[0]))
+			// 	if err != nil {
+			// 		res = util.ErrNotFound
+			// 		break
+			// 	}
+			// 	resultBytes, err := json.Marshal(result)
+			// 	if err != nil {
+			// 		res = util.ErrUnknown
+			// 		break
+			// 	}
+			// 	res = util.NewMessage(200, "OK", req.Key, resultBytes)
+			// case "Bind":
+			// 	aor, err := util.StringToAOR(string(req.RawData[0]))
+			// 	if err != nil {
+			// 		res = util.ErrBadRequest
+			// 		break
+			// 	}
+			// 	bind(aor)
+			// 	res = util.NewMessage(200, "OK", req.Key, []byte(""))
+			default:
 				res = util.ErrBadRequest
 			}
 

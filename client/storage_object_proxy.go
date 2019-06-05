@@ -1,61 +1,111 @@
 package client
 
 import (
-	"fmt"
-	"strconv"
-
+	"github.com/golang/protobuf/proto"
 	pb "github.com/mvgmb/BigFruit/proto"
 	"github.com/mvgmb/BigFruit/util"
 )
 
-type StorageObjectProxy struct {
-	Requestor *Requestor
-	Options   *util.Options
-}
+type StorageObjectProxy struct{}
 
-func NewStorageObjectProxy(requestor *Requestor, options *util.Options) *StorageObjectProxy {
-	return &StorageObjectProxy{
-		Requestor: requestor,
-		Options:   options,
-	}
+func NewStorageObjectProxy() *StorageObjectProxy {
+	return &StorageObjectProxy{}
 }
 
 // Upload writes a chunk of bytes into a file
-func (e *StorageObjectProxy) Upload(filePath string, start int64, bytes *[]byte) error {
-	req := util.NewMessage(200, "OK", "StorageObject.Upload",
-		[]byte(filePath),
-		[]byte(strconv.FormatInt(start, 10)),
-		*bytes,
-	)
+func (e *StorageObjectProxy) Upload(reqApp chan *pb.StorageObjectUploadRequest, resApp chan *pb.StorageObjectUploadResponse) error {
+	options := []*util.Options{
+		&util.Options{
+			Host:     "localhost",
+			Port:     8080,
+			Protocol: "tcp",
+		},
+	}
 
-	response, err := e.Requestor.Invoke(&req, e.Options)
+	reqProxy := make(chan proto.Message)
+	resProxy := make(chan proto.Message)
+
+	go func() {
+		for {
+			req, more := <-reqApp
+			if more {
+				reqProxy <- req
+			} else {
+				close(reqProxy)
+				return
+			}
+		}
+
+	}()
+
+	done := make(chan bool)
+	go func() {
+		for {
+			res, more := <-resProxy
+			if more {
+				resApp <- res.(*pb.StorageObjectUploadResponse)
+			} else {
+				close(resApp)
+				done <- true
+				return
+			}
+		}
+	}()
+
+	err := Call(reqProxy, resProxy, options, true)
 	if err != nil {
 		return err
 	}
-	res := response.(*pb.Message)
 
-	if res.Status.Code != 200 {
-		return fmt.Errorf(res.Status.Message, res.Key)
-	}
+	<-done
 	return nil
 }
 
 // Download returns a chunk of bytes from a file
-func (e *StorageObjectProxy) Download(filePath string, start int64, offset int) ([]byte, error) {
-	req := util.NewMessage(200, "OK", "StorageObject.Download",
-		[]byte(filePath),
-		[]byte(strconv.FormatInt(start, 10)),
-		[]byte(strconv.Itoa(offset)),
-	)
+func (e *StorageObjectProxy) Download(reqApp chan *pb.StorageObjectDownloadRequest, resApp chan *pb.StorageObjectDownloadResponse) error {
+	options := []*util.Options{
+		&util.Options{
+			Host:     "localhost",
+			Port:     8080,
+			Protocol: "tcp",
+		},
+	}
 
-	response, err := e.Requestor.Invoke(&req, e.Options)
+	reqProxy := make(chan proto.Message)
+	resProxy := make(chan proto.Message)
+
+	go func() {
+		for {
+			req, more := <-reqApp
+			if more {
+				reqProxy <- req
+			} else {
+				close(reqProxy)
+				return
+			}
+		}
+
+	}()
+
+	done := make(chan bool)
+	go func() {
+		for {
+			res, more := <-resProxy
+			if more {
+				resApp <- res.(*pb.StorageObjectDownloadResponse)
+			} else {
+				close(resApp)
+				done <- true
+				return
+			}
+		}
+	}()
+
+	err := Call(reqProxy, resProxy, options, true)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	res := response.(*pb.Message)
 
-	if res.Status.Code != 200 {
-		return nil, fmt.Errorf(res.Status.Message, res.Key)
-	}
-	return res.RawData[0], nil
+	<-done
+	return nil
 }

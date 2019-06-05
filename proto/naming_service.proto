@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package proto;
+
+message NamingServiceLookupRequest {
+    string serviceName = 1;
+}
+
+message NamingServiceLookupResponse {
+    string serviceName = 1;
+}
+
+// protoc --go_out=./ util.proto

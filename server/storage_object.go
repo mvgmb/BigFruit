@@ -2,6 +2,8 @@ package server
 
 import (
 	"os"
+
+	pb "github.com/mvgmb/BigFruit/proto"
 )
 
 type StorageObject struct {
@@ -15,40 +17,51 @@ func NewStorageObject() *StorageObject {
 }
 
 // Upload writes a chunk of bytes into a file
-func (e *StorageObject) Upload(filePath string, start int64, bytes []byte) error {
+func (e *StorageObject) Upload(uploadRequest *pb.StorageObjectUploadRequest) *pb.StorageObjectUploadResponse {
+	filePath := uploadRequest.FilePath
+	start := uploadRequest.Start
+	bytes := uploadRequest.Bytes
+
 	if e.file == nil || e.file.Name() != filePath {
 		err := e.createFile(filePath)
 		if err != nil {
-			return err
+			return &pb.StorageObjectUploadResponse{Error: err.Error()}
 		}
 	}
 	_, err := e.file.WriteAt(bytes, start)
 	if err != nil {
-		return err
+		return &pb.StorageObjectUploadResponse{Error: err.Error()}
 	}
-	return nil
+	return &pb.StorageObjectUploadResponse{}
 }
 
 // Download returns a chunk of bytes from a file
-func (e *StorageObject) Download(filePath string, start int64, offset int) ([]byte, error) {
+func (e *StorageObject) Download(downloadRequest *pb.StorageObjectDownloadRequest) *pb.StorageObjectDownloadResponse {
+	filePath := downloadRequest.FilePath
+	start := downloadRequest.Start
+	offset := downloadRequest.Offset
+
 	if e.file == nil || e.file.Name() != filePath {
 		err := e.openFile(filePath)
 		if err != nil {
-			return nil, err
+			return &pb.StorageObjectDownloadResponse{Error: err.Error()}
 		}
 	}
+
 	_, err := e.file.Seek(start, 0)
 	if err != nil {
-		return nil, err
+		return &pb.StorageObjectDownloadResponse{Error: err.Error()}
 	}
 
 	readBuffer := make([]byte, offset)
-
 	noBytesRead, err := e.file.Read(readBuffer)
 	if err != nil {
-		return []byte("EOF"), err
+		return &pb.StorageObjectDownloadResponse{Error: err.Error()}
 	}
-	return readBuffer[:noBytesRead], nil
+
+	return &pb.StorageObjectDownloadResponse{
+		Bytes: readBuffer[:noBytesRead],
+	}
 }
 
 func (e *StorageObject) createFile(filePath string) error {

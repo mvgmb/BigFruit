@@ -1,10 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/mvgmb/BigFruit/client"
+	pb "github.com/mvgmb/BigFruit/proto"
 	"github.com/mvgmb/BigFruit/util"
 )
 
@@ -32,19 +32,27 @@ func main() {
 
 	requestor.Open(options)
 
-	bytes := []byte("cafepadas")
-
-	err = proxy.Upload("/home/mario/Documents/git/BigFruit/dataaa.txt", 0, &bytes)
-	if err != nil {
-		log.Println(err)
+	noRequests := 1
+	uploadRequest := &pb.StorageObjectUploadRequest{
+		FilePath: "/home/mario/Documents/git/BigFruit/data.txt",
+		Start:    0,
+		Bytes:    []byte("cafepadas"),
 	}
 
-	bytes, err = proxy.Download("/home/mario/Documents/git/BigFruit/data.txt", 0, 10)
-	if err != nil {
-		log.Println(err)
+	resChan, errChan := proxy.Upload(uploadRequest)
+	for i := 0; i < noRequests; i++ {
+		err = <-errChan
+		if err != nil {
+			log.Println(err)
+		} else {
+			log.Println(<-resChan)
+		}
 	}
+	// bytes, err = proxy.Download("/home/mario/Documents/git/BigFruit/data.txt", 0, 10)
+	// if err != nil {
+	// 	log.Println(err)
+	// }
 
 	requestor.Close()
 
-	fmt.Println(string(bytes))
 }

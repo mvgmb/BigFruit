@@ -21,15 +21,15 @@ func main() {
 		log.Fatal(err)
 	}
 
-	aor := util.AOR{
-		Host: shr.Options.Host,
-		Port: shr.Options.Port,
-		ID:   "StorageObject",
-	}
-	err = server.Bind(&aor)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// aor := util.AOR{
+	// 	Host: shr.Options.Host,
+	// 	Port: shr.Options.Port,
+	// 	ID:   "StorageObject",
+	// }
+	// err = server.Bind(&aor)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
 	shr.Loop()
 }

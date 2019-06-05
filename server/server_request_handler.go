@@ -18,6 +18,11 @@ type ServerRequestHandler struct {
 	listener *net.Listener
 }
 
+var protoType = map[string]proto.Message{
+	"*proto.StorageObjectUploadRequest":   &pb.StorageObjectUploadRequest{},
+	"*proto.StorageObjectDownloadRequest": &pb.StorageObjectDownloadRequest{},
+}
+
 func NewServerRequestHandler(options *util.Options) (*ServerRequestHandler, error) {
 	addr := fmt.Sprintf("%s:%d", options.Host, options.Port)
 
@@ -68,49 +73,49 @@ func (e *ServerRequestHandler) Loop() {
 				log.Println(err)
 				break
 			}
-			bytes := buffer[:n]
 
-			var res proto.Message
-			req := pb.Message{}
+			go func() {
+				var res proto.Message
 
-			err = marshaller.Unmarshal(&bytes, &req)
-			if err != nil {
-				// TODO handle error
-				log.Println(err)
-				break
-			}
+				bytes := buffer[:n]
 
-			keys := strings.Split(req.Key, ".")
+				wrapper := &pb.MessageWrapper{}
 
-			if len(keys) != 2 {
-				res = util.ErrBadRequest
-			} else {
-				switch keys[0] {
-				case "StorageObject":
-					bytes, err := storageInvoker.Invoke(&req)
+				err = marshaller.Unmarshal(&bytes, wrapper)
+				if err != nil {
+					// TODO handle error
+					log.Println(err)
+					return
+				}
+
+				req, err := util.UnwrapMessage(wrapper)
+				if err != nil {
+					log.Println(err)
+				}
+
+				if strings.HasPrefix(wrapper.Type, "*proto.StorageObject") {
+					res, err = storageInvoker.Invoke(wrapper.Type, req)
 					if err != nil {
-						res = util.NewMessage(400, "Bad Request", err.Error())
-						break
+						res = util.ErrBadRequest
 					}
-					res = util.NewMessage(200, "OK", req.Key, bytes)
-				default:
+				} else {
 					res = util.ErrBadRequest
 				}
-			}
 
-			bytes, err = marshaller.Marshal(&res)
-			if err != nil {
-				// TODO handle error
-				log.Println(err)
-				break
-			}
+				bytes, err = util.WrapMessage(res)
+				if err != nil {
+					// TODO handle error
+					log.Println(err)
+					return
+				}
 
-			_, err = netConn.Write(bytes)
-			if err != nil {
-				// TODO handle error
-				log.Println(err)
-				break
-			}
+				_, err = netConn.Write(bytes)
+				if err != nil {
+					// TODO handle error
+					log.Println(err)
+					return
+				}
+			}()
 		}
 		netConn.Close()
 	}

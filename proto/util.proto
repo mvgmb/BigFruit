@@ -2,15 +2,14 @@ syntax = "proto3";
 
 package proto;
 
-message Status {
+message Error {
     uint64 code = 1;
     string message = 2;
 }
 
-message Message {
-    Status status = 1;
-    string key = 2;
-    repeated bytes raw_data = 3;
+message MessageWrapper {
+    string type = 1;
+    bytes message = 2;
 }
 
 // protoc --go_out=./ util.proto

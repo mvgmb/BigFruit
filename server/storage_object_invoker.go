@@ -2,9 +2,8 @@ package server
 
 import (
 	"fmt"
-	"log"
-	"strconv"
 
+	"github.com/golang/protobuf/proto"
 	pb "github.com/mvgmb/BigFruit/proto"
 )
 
@@ -18,40 +17,15 @@ func NewStorageObjectInvoker() *StorageObjectInvoker {
 	}
 }
 
-func (e *StorageObjectInvoker) Invoke(req *pb.Message) ([]byte, error) {
-	switch req.Key {
-	case "StorageObject.Upload":
-		if len(req.RawData) != 3 {
-			return nil, fmt.Errorf(fmt.Sprintf("not enough arguments: needed 3, got: %d", len(req.RawData)))
-		}
-		log.Println(req)
-		start, err := strconv.Atoi(string(req.RawData[1]))
-		if err != nil {
-			return nil, err
-		}
-		err = e.storageObject.Upload(string(req.RawData[0]), int64(start), req.RawData[2])
-		if err != nil {
-			return nil, err
-		}
-		return []byte("OK"), nil
-	case "StorageObject.Download":
-		if len(req.RawData) != 3 {
-			return nil, fmt.Errorf(fmt.Sprintf("not enough arguments: needed 3, got: %d", len(req.RawData)))
-		}
-		start, err := strconv.ParseInt(string(req.RawData[1]), 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		offset, err := strconv.Atoi(string(req.RawData[2]))
-		if err != nil {
-			return nil, err
-		}
-		bytes, err := e.storageObject.Download(string(req.RawData[0]), start, offset)
-		if err != nil {
-			return nil, err
-		}
-		return bytes, nil
+func (e *StorageObjectInvoker) Invoke(messageType string, req proto.Message) (proto.Message, error) {
+	switch messageType {
+	case "*proto.StorageObjectUploadRequest":
+		uploadRequest := req.(*pb.StorageObjectUploadRequest)
+		return e.storageObject.Upload(uploadRequest), nil
+	case "*proto.StorageObjectDownloadRequest":
+		downloadRequest := req.(*pb.StorageObjectDownloadRequest)
+		return e.storageObject.Download(downloadRequest), nil
 	default:
-		return nil, fmt.Errorf("method not found")
+		return nil, fmt.Errorf("procedure not found")
 	}
 }
