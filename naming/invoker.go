@@ -31,7 +31,7 @@ func NewInvoker(options *util.Options) (*Invoker, error) {
 
 func (e *Invoker) Invoke() {
 	log.Printf("Listening at %s:%d\n", e.serverRequestHandler.options.Host, e.serverRequestHandler.options.Port)
-	defer log.Println("die")
+
 	for {
 		err := e.serverRequestHandler.accept()
 		if err != nil {
