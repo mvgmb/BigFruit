@@ -26,10 +26,21 @@ type Options struct {
 }
 
 var protoType = map[string]proto.Message{
+	"*proto.Error": &pb.Error{},
+
 	"*proto.StorageObjectUploadRequest":    &pb.StorageObjectUploadRequest{},
 	"*proto.StorageObjectUploadResponse":   &pb.StorageObjectUploadResponse{},
 	"*proto.StorageObjectDownloadRequest":  &pb.StorageObjectDownloadRequest{},
 	"*proto.StorageObjectDownloadResponse": &pb.StorageObjectDownloadResponse{},
+
+	"*proto.NamingServiceBindRequest":        &pb.NamingServiceBindRequest{},
+	"*proto.NamingServiceBindResponse":       &pb.NamingServiceBindResponse{},
+	"*proto.NamingServiceLookupRequest":      &pb.NamingServiceLookupRequest{},
+	"*proto.NamingServiceLookupResponse":     &pb.NamingServiceLookupResponse{},
+	"*proto.NamingServiceLookupManyRequest":  &pb.NamingServiceLookupManyRequest{},
+	"*proto.NamingServiceLookupManyResponse": &pb.NamingServiceLookupManyResponse{},
+	"*proto.NamingServiceLookupAllRequest":   &pb.NamingServiceLookupAllRequest{},
+	"*proto.NamingServiceLookupAllResponse":  &pb.NamingServiceLookupAllResponse{},
 }
 
 func WrapMessage(message proto.Message) ([]byte, error) {

@@ -38,82 +38,55 @@ func (e *Invoker) Invoke() {
 			e.serverRequestHandler.close()
 			continue
 		}
-		for {
-			bytes, err := e.serverRequestHandler.receive()
-			if err != nil {
-				// TODO handle error
-				log.Println(err)
-				break
-			}
 
-			var res proto.Message
+		bytes, err := e.serverRequestHandler.receive()
+		if err != nil {
+			// TODO handle error
+			log.Println(err)
+			break
+		}
 
-			req := pb.MessageWrapper{}
+		var res proto.Message
 
-			err = e.marshaller.Unmarshal(&bytes, &req)
-			if err != nil {
-				// TODO handle error
-				log.Println(err)
-				break
-			}
+		wrapper := pb.MessageWrapper{}
 
-			switch req.Type {
-			// case "Lookup":
-			// 	result, err := lookup(string(req.RawData[0]))
-			// 	if err != nil {
-			// 		res = util.ErrNotFound
-			// 		break
-			// 	}
-			// 	res = util.NewMessage(200, "OK", req.Key, []byte(result.String()))
-			// case "LookupMany":
-			// 	result, err := lookupMany(string(req.RawData[0]), int(binary.BigEndian.Uint64(req.RawData[1])))
-			// 	if err != nil {
-			// 		res = util.ErrNotFound
-			// 		break
-			// 	}
-			// 	resultBytes, err := json.Marshal(result)
-			// 	if err != nil {
-			// 		res = util.ErrUnknown
-			// 		break
-			// 	}
-			// 	res = util.NewMessage(200, "OK", req.Key, resultBytes)
-			// case "LookupAll":
-			// 	result, err := lookupAll(string(req.RawData[0]))
-			// 	if err != nil {
-			// 		res = util.ErrNotFound
-			// 		break
-			// 	}
-			// 	resultBytes, err := json.Marshal(result)
-			// 	if err != nil {
-			// 		res = util.ErrUnknown
-			// 		break
-			// 	}
-			// 	res = util.NewMessage(200, "OK", req.Key, resultBytes)
-			// case "Bind":
-			// 	aor, err := util.StringToAOR(string(req.RawData[0]))
-			// 	if err != nil {
-			// 		res = util.ErrBadRequest
-			// 		break
-			// 	}
-			// 	bind(aor)
-			// 	res = util.NewMessage(200, "OK", req.Key, []byte(""))
-			default:
-				res = util.ErrBadRequest
-			}
+		err = e.marshaller.Unmarshal(&bytes, &wrapper)
+		if err != nil {
+			// TODO handle error
+			log.Println(err)
+			break
+		}
 
-			bytes, err = e.marshaller.Marshal(&res)
-			if err != nil {
-				// TODO handle error
-				log.Println(err)
-				break
-			}
+		req, err := util.UnwrapMessage(&wrapper)
+		if err != nil {
+			log.Println(err)
+		}
 
-			err = e.serverRequestHandler.send(&bytes)
-			if err != nil {
-				// TODO handle error
-				log.Println(err)
-				break
-			}
+		switch wrapper.Type {
+		case "*proto.NamingServiceBindRequest":
+			res = bind(req.(*pb.NamingServiceBindRequest))
+		case "*proto.NamingServiceLookupRequest":
+			res = lookup(req.(*pb.NamingServiceLookupRequest))
+		case "*proto.NamingServiceLookupManyRequest":
+			res = lookupMany(req.(*pb.NamingServiceLookupManyRequest))
+		case "*proto.NamingServiceLookupAllRequest":
+			res = lookupAll(req.(*pb.NamingServiceLookupAllRequest))
+		default:
+			res = util.ErrBadRequest
+		}
+
+		bytes, err = util.WrapMessage(res)
+		if err != nil {
+			// TODO handle error
+			log.Println(err)
+			break
+		}
+
+		err = e.serverRequestHandler.send(&bytes)
+		if err != nil {
+			// TODO handle error
+			log.Println(err)
+			break
 		}
 
 		err = e.serverRequestHandler.close()

@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package proto;
+
+message AOR {
+    string host = 1;
+    uint32 port = 2;
+    string id = 3;
+}
+
+message NamingServiceBindRequest {
+    string serviceName = 1;
+    AOR aor = 2;
+}
+message NamingServiceBindResponse {
+    string error = 1;
+}
+
+message NamingServiceLookupRequest {
+    string serviceName = 1;
+}
+message NamingServiceLookupResponse {
+    AOR aor = 1;
+    string error = 2;
+}
+
+message NamingServiceLookupManyRequest {
+    string serviceName = 1;
+    uint32 numberOfAor = 2;
+}
+message NamingServiceLookupManyResponse {
+    repeated AOR aorList = 1;
+    string error = 2;
+}
+
+message NamingServiceLookupAllRequest {
+    string serviceName = 1;
+}
+message NamingServiceLookupAllResponse {
+    repeated AOR aorList = 1;
+    string error = 2;
+}
+
+// protoc --go_out=./ util.proto

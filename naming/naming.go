@@ -1,62 +1,70 @@
 package naming
 
 import (
-	"errors"
 	"log"
 
-	"github.com/mvgmb/BigFruit/util"
+	pb "github.com/mvgmb/BigFruit/proto"
 )
 
 var (
-	servicesTable = make(map[string][]util.AOR)
-	roundRobin    = -1
+	servicesTable = make(map[string][]*pb.AOR)
+	roundRobin    = make(map[string]int)
 )
 
-func bind(aor *util.AOR) {
-	servicesTable[aor.ID] = append(servicesTable[aor.ID], *aor)
+func bind(bindRequest *pb.NamingServiceBindRequest) *pb.NamingServiceBindResponse {
+	serviceName := bindRequest.ServiceName
 
-	log.Println("New service registered: " + aor.ID)
-	log.Println(servicesTable)
+	servicesTable[serviceName] = append(servicesTable[serviceName], bindRequest.Aor)
+	roundRobin[serviceName] = -1
+
+	log.Println("New service registered: " + serviceName)
+
+	return &pb.NamingServiceBindResponse{}
 }
 
-func lookup(fileName string) (*util.AOR, error) {
-	if _, ok := servicesTable[fileName]; !ok {
-		return nil, errors.New("404 - Service not found")
+func lookup(lookupRequest *pb.NamingServiceLookupRequest) *pb.NamingServiceLookupResponse {
+	serviceName := lookupRequest.ServiceName
+
+	if _, ok := servicesTable[serviceName]; !ok {
+		return &pb.NamingServiceLookupResponse{Error: "404 - Service not found"}
 	}
 
-	if roundRobin+1 == len(servicesTable[fileName]) {
-		roundRobin = 0
-	} else {
-		roundRobin++
+	roundRobin[serviceName]++
+	if roundRobin[serviceName] >= len(servicesTable[serviceName]) {
+		roundRobin[serviceName] = 0
 	}
 
-	return &servicesTable[fileName][roundRobin], nil
+	return &pb.NamingServiceLookupResponse{Aor: servicesTable[serviceName][roundRobin[serviceName]]}
 }
 
-func lookupMany(fileName string, numberOfNodes int) (*[]util.AOR, error) {
-	var listOfNodes []util.AOR
-	if _, ok := servicesTable[fileName]; !ok {
-		return nil, errors.New("404 - Service not found")
+func lookupMany(lookupManyRequest *pb.NamingServiceLookupManyRequest) *pb.NamingServiceLookupManyResponse {
+	serviceName := lookupManyRequest.ServiceName
+	numberOfAor := lookupManyRequest.NumberOfAor
+
+	if _, ok := servicesTable[serviceName]; !ok {
+		return &pb.NamingServiceLookupManyResponse{Error: "404 - Service not found"}
 	}
-	if len(servicesTable[fileName]) < numberOfNodes {
-		return nil, errors.New("there are less nodes than required")
+	if uint32(len(servicesTable[serviceName])) < numberOfAor {
+		return &pb.NamingServiceLookupManyResponse{Error: "There are less Aor than required"}
 	}
-	for i := 0; i < numberOfNodes; i++ {
-		if roundRobin+1 == len(servicesTable[fileName]) {
-			roundRobin = 0
-		} else {
-			roundRobin++
+
+	var AorList []*pb.AOR
+	for i := uint32(0); i < numberOfAor; i++ {
+		roundRobin[serviceName]++
+		if roundRobin[serviceName] >= len(servicesTable[serviceName]) {
+			roundRobin[serviceName] = 0
 		}
-		listOfNodes = append(listOfNodes, servicesTable[fileName][roundRobin])
+		AorList = append(AorList, servicesTable[serviceName][roundRobin[serviceName]])
 	}
-	return &listOfNodes, nil
+	return &pb.NamingServiceLookupManyResponse{AorList: AorList}
 }
 
-func lookupAll(fileName string) (*[]util.AOR, error) {
-	if _, ok := servicesTable[fileName]; !ok {
-		return nil, errors.New("404 - Service not found")
-	}
-	var listOfNodes = servicesTable[fileName]
+func lookupAll(lookupAllRequest *pb.NamingServiceLookupAllRequest) *pb.NamingServiceLookupAllResponse {
+	serviceName := lookupAllRequest.ServiceName
 
-	return &listOfNodes, nil
+	if _, ok := servicesTable[serviceName]; !ok {
+		return &pb.NamingServiceLookupAllResponse{Error: "404 - Service not found"}
+	}
+
+	return &pb.NamingServiceLookupAllResponse{AorList: servicesTable[serviceName]}
 }

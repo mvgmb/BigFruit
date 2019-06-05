@@ -1,36 +1,26 @@
 package server
 
 import (
+	pb "github.com/mvgmb/BigFruit/proto"
 	"github.com/mvgmb/BigFruit/util"
 )
 
-var options = util.Options{
+var options = &util.Options{
 	Host:     "localhost",
 	Port:     1337,
 	Protocol: "tcp",
 }
 
-func Bind(aor *util.AOR) error {
-	// requestor, err := NewRequestor()
-	// if err != nil {
-	// 	return err
-	// }
-	// req := util.NewMessageWrapper(200, "OK", "Bind", []byte(aor.String()))
+func Bind(bindRequest *pb.NamingServiceBindRequest) (*pb.NamingServiceBindResponse, error) {
+	requestor, err := NewRequestor(options)
+	if err != nil {
+		return nil, err
+	}
+	res, err := requestor.Invoke(bindRequest)
+	if err != nil {
+		return nil, err
+	}
+	requestor.Close()
 
-	// err = requestor.open(&options)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// _, err = requestor.invoke(&req, &options)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// err = requestor.close(&options)
-	// if err != nil {
-	// 	return err
-	// }
-
-	return nil
+	return res.(*pb.NamingServiceBindResponse), nil
 }

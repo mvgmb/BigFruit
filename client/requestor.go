@@ -1,6 +1,8 @@
 package client
 
 import (
+	"fmt"
+
 	"github.com/golang/protobuf/proto"
 	pb "github.com/mvgmb/BigFruit/proto"
 	"github.com/mvgmb/BigFruit/util"
@@ -55,6 +57,10 @@ func (e *Requestor) Invoke(req proto.Message) (proto.Message, error) {
 	res, err := util.UnwrapMessage(wrapper)
 	if err != nil {
 		return nil, err
+	}
+
+	if wrapper.Type == "*proto.Error" {
+		return nil, fmt.Errorf((res.(*pb.Error)).Message)
 	}
 
 	return res, nil

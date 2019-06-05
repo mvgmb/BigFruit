@@ -18,11 +18,6 @@ type ServerRequestHandler struct {
 	listener *net.Listener
 }
 
-var protoType = map[string]proto.Message{
-	"*proto.StorageObjectUploadRequest":   &pb.StorageObjectUploadRequest{},
-	"*proto.StorageObjectDownloadRequest": &pb.StorageObjectDownloadRequest{},
-}
-
 func NewServerRequestHandler(options *util.Options) (*ServerRequestHandler, error) {
 	addr := fmt.Sprintf("%s:%d", options.Host, options.Port)
 
