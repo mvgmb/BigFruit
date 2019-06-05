@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/mvgmb/BigFruit/app"
@@ -20,8 +19,6 @@ func NewStorageObjectInvoker() *StorageObjectInvoker {
 }
 
 func (e *StorageObjectInvoker) Invoke(messageType string, req proto.Message) (proto.Message, error) {
-	log.Println("REQ", messageType, req)
-
 	switch messageType {
 	case "*storage_object.UploadRequest":
 		uploadRequest := req.(*storage_object.UploadRequest)

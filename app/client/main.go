@@ -23,12 +23,14 @@ func main() {
 
 	var options []*util.Options
 
-	option := &util.Options{
-		Host:     "localhost",
-		Port:     8080,
-		Protocol: "tcp",
+	for i := range res.AorList {
+		option := &util.Options{
+			Host:     res.AorList[i].Host,
+			Port:     uint16(res.AorList[i].Port),
+			Protocol: "tcp",
+		}
+		options = append(options, option)
 	}
-	options = append(options, option)
 
 	reqCh := make(chan proto.Message)
 	resCh := make(chan proto.Message)

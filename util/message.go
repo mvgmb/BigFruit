@@ -1,7 +1,6 @@
 package util
 
 import (
-	"log"
 	"reflect"
 
 	"github.com/golang/protobuf/proto"
@@ -66,7 +65,6 @@ func WrapMessage(message proto.Message) ([]byte, error) {
 }
 
 func UnwrapMessage(wrapper *pb.MessageWrapper) (proto.Message, error) {
-	log.Println(wrapper)
 	message := protoType[wrapper.Type]
 
 	err := proto.Unmarshal(wrapper.Message, message)
