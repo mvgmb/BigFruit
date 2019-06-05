@@ -4,36 +4,40 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/mvgmb/BigFruit/app/proto/storage_object"
 	"github.com/mvgmb/BigFruit/util"
 )
 
+type BigFruit struct {
+	proxy interface{}
+}
+
 const maxNoConcurrentRequestsPerServer = 3
 
-func Call(reqCh chan proto.Message, resCh chan proto.Message, options []*util.Options, replicate bool) error {
-	// Initialize requestors
-	var requestors []*Requestor
-	for i := range options {
-		requestor, err := NewRequestor(options[i])
+func NewBigFruit() *BigFruit {
+	return &BigFruit{}
+}
+
+func (e *BigFruit) Call(objectName, methodName string, options []*util.Options, replicate bool, reqCh, resCh chan proto.Message) error {
+	// Initialize proxy
+	switch objectName {
+	case "StorageObject":
+		proxy, err := NewStorageObjectProxy(options)
 		if err != nil {
-			continue
+			return err
 		}
-		requestors = append(requestors, requestor)
+		defer proxy.Close()
+		e.proxy = proxy
+	default:
+		return fmt.Errorf("Object requested not found")
 	}
-	if len(requestors) == 0 {
-		return fmt.Errorf("Unable to connect to any given servers")
-	}
-	defer func() {
-		for i := range requestors {
-			requestors[i].Close()
-		}
-	}()
 
 	// Initialize internal channels
 	var internal []chan proto.Message
 	if replicate {
-		internal = make([]chan proto.Message, len(requestors))
+		internal = make([]chan proto.Message, len(options))
 	} else {
-		internal = make([]chan proto.Message, maxNoConcurrentRequestsPerServer*len(requestors))
+		internal = make([]chan proto.Message, maxNoConcurrentRequestsPerServer*len(options))
 	}
 
 	errors := make([]chan error, len(internal))
@@ -50,7 +54,7 @@ func Call(reqCh chan proto.Message, resCh chan proto.Message, options []*util.Op
 		requestorsRobin := 0
 		noRoutinesPerReq := 1
 		if replicate {
-			noRoutinesPerReq = len(requestors)
+			noRoutinesPerReq = len(options)
 		}
 
 		for {
@@ -61,14 +65,15 @@ func Call(reqCh chan proto.Message, resCh chan proto.Message, options []*util.Op
 
 					go func(id, requestorIndex int) {
 						index := id % len(internal)
-						res, err := requestors[requestorIndex].Invoke(request)
+
+						res, err := callObject(objectName, methodName, e.proxy, request)
 						errors[index] <- err
 						internal[index] <- res
 					}(curID, requestorsRobin)
 
 					curID++
 					requestorsRobin++
-					if requestorsRobin >= len(requestors) {
+					if requestorsRobin >= len(options) {
 						requestorsRobin = 0
 					}
 				}
@@ -106,4 +111,27 @@ func Call(reqCh chan proto.Message, resCh chan proto.Message, options []*util.Op
 	}
 
 	return nil
+}
+
+func callObject(objectName, methodName string, proxy interface{}, req proto.Message) (proto.Message, error) {
+	switch objectName {
+	case "StorageObject":
+		res, err := callStorageObjectMethod(methodName, proxy.(*StorageObjectProxy), req)
+		return res, err
+	default:
+		return nil, fmt.Errorf("Object not found")
+	}
+}
+
+func callStorageObjectMethod(methodName string, proxy *StorageObjectProxy, req proto.Message) (proto.Message, error) {
+	switch methodName {
+	case "Upload":
+		res, err := proxy.Upload(req.(*storage_object.UploadRequest))
+		return res, err
+	case "Download":
+		res, err := proxy.Download(req.(*storage_object.DownloadRequest))
+		return res, err
+	default:
+		return nil, fmt.Errorf("Method not found")
+	}
 }

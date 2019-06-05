@@ -3,9 +3,11 @@ package main
 import (
 	"log"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/mvgmb/BigFruit/app/proto/storage_object"
 	"github.com/mvgmb/BigFruit/client"
 	"github.com/mvgmb/BigFruit/proto/naming"
+	"github.com/mvgmb/BigFruit/util"
 )
 
 func main() {
@@ -19,85 +21,127 @@ func main() {
 	}
 	log.Println(res)
 
-	upload()
-}
+	var options []*util.Options
 
-func upload() {
+	option := &util.Options{
+		Host:     "localhost",
+		Port:     8080,
+		Protocol: "tcp",
+	}
+	options = append(options, option)
+
+	reqCh := make(chan proto.Message)
+	resCh := make(chan proto.Message)
+
 	reqs := make([]*storage_object.UploadRequest, 2)
 	reqs[0] = &storage_object.UploadRequest{
 		FilePath: "/home/mario/Documents/git/BigFruit/data1.txt",
 		Start:    0,
-		Bytes:    []byte("cacholo1"),
+		Bytes:    []byte("cachsssssssssssolo1"),
 	}
 	reqs[1] = &storage_object.UploadRequest{
 		FilePath: "/home/mario/Documents/git/BigFruit/data2.txt",
 		Start:    0,
 		Bytes:    []byte("cacholo2"),
 	}
-	req := make(chan *storage_object.UploadRequest)
-	res := make(chan *storage_object.UploadResponse)
 
-	sop := client.StorageObjectProxy{}
+	bf := client.NewBigFruit()
 
-	done := make(chan bool)
+	go bf.Call("StorageObject", "Upload", options, true, reqCh, resCh)
 
 	go func() {
-		for {
-			response, more := <-res
-			if more {
-				log.Println(response)
-			} else {
-				done <- true
-				return
-			}
+		for i := range reqs {
+			reqCh <- reqs[i]
 		}
-	}()
-	go func() {
-		req <- reqs[0]
-		req <- reqs[1]
-		close(req)
+		close(reqCh)
 	}()
 
-	err := sop.Upload(req, res)
-	if err != nil {
-		log.Println(err)
+	for {
+		res, more := <-resCh
+		if more {
+			log.Println(res)
+		} else {
+			break
+		}
 	}
-	<-done
 }
 
-func download() {
-	req := make(chan *storage_object.DownloadRequest)
-	res := make(chan *storage_object.DownloadResponse)
+// func upload() {
+// 	reqs := make([]*storage_object.UploadRequest, 2)
+// 	reqs[0] = &storage_object.UploadRequest{
+// 		FilePath: "/home/mario/Documents/git/BigFruit/data1.txt",
+// 		Start:    0,
+// 		Bytes:    []byte("cacholo1"),
+// 	}
+// 	reqs[1] = &storage_object.UploadRequest{
+// 		FilePath: "/home/mario/Documents/git/BigFruit/data2.txt",
+// 		Start:    0,
+// 		Bytes:    []byte("cacholo2"),
+// 	}
+// 	req := make(chan *storage_object.UploadRequest)
+// 	res := make(chan *storage_object.UploadResponse)
 
-	sop := client.StorageObjectProxy{}
+// 	sop := client.StorageObjectProxy{}
 
-	done := make(chan bool)
+// 	done := make(chan bool)
 
-	go func() {
-		for {
-			response, more := <-res
-			if more {
-				log.Println(response)
-			} else {
-				done <- true
-				return
-			}
-		}
-	}()
-	go func() {
-		request := &storage_object.DownloadRequest{
-			FilePath: "/home/mario/Documents/git/BigFruit/MiniJavaSkeleton.zip",
-			Start:    0,
-			Offset:   100,
-		}
-		req <- request
-		close(req)
-	}()
+// 	go func() {
+// 		for {
+// 			response, more := <-res
+// 			if more {
+// 				log.Println(response)
+// 			} else {
+// 				done <- true
+// 				return
+// 			}
+// 		}
+// 	}()
+// 	go func() {
+// 		req <- reqs[0]
+// 		req <- reqs[1]
+// 		close(req)
+// 	}()
 
-	err := sop.Download(req, res)
-	if err != nil {
-		log.Println(err)
-		done <- true
-	}
-	<-done
-}
+// 	err := sop.Upload(req, res)
+// 	if err != nil {
+// 		log.Println(err)
+// 	}
+// 	<-done
+// }
+
+// func download() {
+// 	req := make(chan *storage_object.DownloadRequest)
+// 	res := make(chan *storage_object.DownloadResponse)
+
+// 	sop := client.StorageObjectProxy{}
+
+// 	done := make(chan bool)
+
+// 	go func() {
+// 		for {
+// 			response, more := <-res
+// 			if more {
+// 				log.Println(response)
+// 			} else {
+// 				done <- true
+// 				return
+// 			}
+// 		}
+// 	}()
+// 	go func() {
+// 		request := &storage_object.DownloadRequest{
+// 			FilePath: "/home/mario/Documents/git/BigFruit/MiniJavaSkeleton.zip",
+// 			Start:    0,
+// 			Offset:   100,
+// 		}
+// 		req <- request
+// 		close(req)
+// 	}()
+
+// 	err := sop.Download(req, res)
+// 	if err != nil {
+// 		log.Println(err)
+// 		done <- true
+// 	}
+// 	<-done
+// }
