@@ -1,7 +1,7 @@
 package client
 
 import (
-	pb "github.com/mvgmb/BigFruit/proto"
+	"github.com/mvgmb/BigFruit/proto/naming"
 	"github.com/mvgmb/BigFruit/util"
 )
 
@@ -11,7 +11,7 @@ var lookupOptions = &util.Options{
 	Protocol: "tcp",
 }
 
-func LookupMany(lookupManyRequest *pb.NamingServiceLookupManyRequest) (*pb.NamingServiceLookupManyResponse, error) {
+func LookupMany(lookupManyRequest *naming.LookupManyRequest) (*naming.LookupManyResponse, error) {
 	requestor, err := NewRequestor(lookupOptions)
 	if err != nil {
 		return nil, err
@@ -22,5 +22,5 @@ func LookupMany(lookupManyRequest *pb.NamingServiceLookupManyRequest) (*pb.Namin
 	}
 	requestor.Close()
 
-	return res.(*pb.NamingServiceLookupManyResponse), nil
+	return res.(*naming.LookupManyResponse), nil
 }

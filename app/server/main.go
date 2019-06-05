@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	pb "github.com/mvgmb/BigFruit/proto"
+	"github.com/mvgmb/BigFruit/proto/naming"
 	"github.com/mvgmb/BigFruit/server"
 	"github.com/mvgmb/BigFruit/util"
 )
@@ -17,12 +17,17 @@ var (
 )
 
 func main() {
-	storageObjectAOR := &pb.AOR{
-		Host: "localhost",
-		Port: 8080,
+	shr, err := server.NewServerRequestHandler(options)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	storageObjectAOR := &naming.AOR{
+		Host: shr.Options.Host,
+		Port: uint32(shr.Options.Port),
 		Id:   "StorageObject",
 	}
-	bindRequest := &pb.NamingServiceBindRequest{
+	bindRequest := &naming.BindRequest{
 		ServiceName: "StorageObject",
 		Aor:         storageObjectAOR,
 	}
@@ -32,9 +37,5 @@ func main() {
 	}
 	log.Println(res)
 
-	shr, err := server.NewServerRequestHandler(options)
-	if err != nil {
-		log.Fatal(err)
-	}
 	shr.Loop()
 }

@@ -1,26 +1,26 @@
 syntax = "proto3";
 
-package proto;
+package storage_object;
 
-message StorageObjectUploadRequest {
+message UploadRequest {
     string file_path = 1;
     int64 start = 2;
     bytes bytes = 3;
 }
 
-message StorageObjectUploadResponse {
+message UploadResponse {
     string error = 1;
 }
 
-message StorageObjectDownloadRequest {
+message DownloadRequest {
     string file_path = 1;
     int64 start = 2;
     int32 offset = 3;
 }
 
-message StorageObjectDownloadResponse {
+message DownloadResponse {
     bytes bytes = 1;
     string error = 2;
 }
 
-// protoc --go_out=./ util.proto
+// protoc --go_out=./ storage_object.proto

@@ -3,15 +3,15 @@ package naming
 import (
 	"log"
 
-	pb "github.com/mvgmb/BigFruit/proto"
+	naming "github.com/mvgmb/BigFruit/proto/naming"
 )
 
 var (
-	servicesTable = make(map[string][]*pb.AOR)
+	servicesTable = make(map[string][]*naming.AOR)
 	roundRobin    = make(map[string]int)
 )
 
-func bind(bindRequest *pb.NamingServiceBindRequest) *pb.NamingServiceBindResponse {
+func bind(bindRequest *naming.BindRequest) *naming.BindResponse {
 	serviceName := bindRequest.ServiceName
 
 	servicesTable[serviceName] = append(servicesTable[serviceName], bindRequest.Aor)
@@ -19,14 +19,14 @@ func bind(bindRequest *pb.NamingServiceBindRequest) *pb.NamingServiceBindRespons
 
 	log.Println("New service registered: " + serviceName)
 
-	return &pb.NamingServiceBindResponse{}
+	return &naming.BindResponse{}
 }
 
-func lookup(lookupRequest *pb.NamingServiceLookupRequest) *pb.NamingServiceLookupResponse {
+func lookup(lookupRequest *naming.LookupRequest) *naming.LookupResponse {
 	serviceName := lookupRequest.ServiceName
 
 	if _, ok := servicesTable[serviceName]; !ok {
-		return &pb.NamingServiceLookupResponse{Error: "404 - Service not found"}
+		return &naming.LookupResponse{Error: "404 - Service not found"}
 	}
 
 	roundRobin[serviceName]++
@@ -34,21 +34,21 @@ func lookup(lookupRequest *pb.NamingServiceLookupRequest) *pb.NamingServiceLooku
 		roundRobin[serviceName] = 0
 	}
 
-	return &pb.NamingServiceLookupResponse{Aor: servicesTable[serviceName][roundRobin[serviceName]]}
+	return &naming.LookupResponse{Aor: servicesTable[serviceName][roundRobin[serviceName]]}
 }
 
-func lookupMany(lookupManyRequest *pb.NamingServiceLookupManyRequest) *pb.NamingServiceLookupManyResponse {
+func lookupMany(lookupManyRequest *naming.LookupManyRequest) *naming.LookupManyResponse {
 	serviceName := lookupManyRequest.ServiceName
 	numberOfAor := lookupManyRequest.NumberOfAor
 
 	if _, ok := servicesTable[serviceName]; !ok {
-		return &pb.NamingServiceLookupManyResponse{Error: "404 - Service not found"}
+		return &naming.LookupManyResponse{Error: "404 - Service not found"}
 	}
 	if uint32(len(servicesTable[serviceName])) < numberOfAor {
-		return &pb.NamingServiceLookupManyResponse{Error: "There are less Aor than required"}
+		return &naming.LookupManyResponse{Error: "There are less Aor than required"}
 	}
 
-	var AorList []*pb.AOR
+	var AorList []*naming.AOR
 	for i := uint32(0); i < numberOfAor; i++ {
 		roundRobin[serviceName]++
 		if roundRobin[serviceName] >= len(servicesTable[serviceName]) {
@@ -56,15 +56,15 @@ func lookupMany(lookupManyRequest *pb.NamingServiceLookupManyRequest) *pb.Naming
 		}
 		AorList = append(AorList, servicesTable[serviceName][roundRobin[serviceName]])
 	}
-	return &pb.NamingServiceLookupManyResponse{AorList: AorList}
+	return &naming.LookupManyResponse{AorList: AorList}
 }
 
-func lookupAll(lookupAllRequest *pb.NamingServiceLookupAllRequest) *pb.NamingServiceLookupAllResponse {
+func lookupAll(lookupAllRequest *naming.LookupAllRequest) *naming.LookupAllResponse {
 	serviceName := lookupAllRequest.ServiceName
 
 	if _, ok := servicesTable[serviceName]; !ok {
-		return &pb.NamingServiceLookupAllResponse{Error: "404 - Service not found"}
+		return &naming.LookupAllResponse{Error: "404 - Service not found"}
 	}
 
-	return &pb.NamingServiceLookupAllResponse{AorList: servicesTable[serviceName]}
+	return &naming.LookupAllResponse{AorList: servicesTable[serviceName]}
 }

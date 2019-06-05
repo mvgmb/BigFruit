@@ -1,9 +1,9 @@
-package server
+package app
 
 import (
 	"os"
 
-	pb "github.com/mvgmb/BigFruit/proto"
+	storage_object "github.com/mvgmb/BigFruit/app/proto/storage_object"
 )
 
 type StorageObject struct {
@@ -17,7 +17,7 @@ func NewStorageObject() *StorageObject {
 }
 
 // Upload writes a chunk of bytes into a file
-func (e *StorageObject) Upload(uploadRequest *pb.StorageObjectUploadRequest) *pb.StorageObjectUploadResponse {
+func (e *StorageObject) Upload(uploadRequest *storage_object.UploadRequest) *storage_object.UploadResponse {
 	filePath := uploadRequest.FilePath
 	start := uploadRequest.Start
 	bytes := uploadRequest.Bytes
@@ -25,18 +25,18 @@ func (e *StorageObject) Upload(uploadRequest *pb.StorageObjectUploadRequest) *pb
 	if e.file == nil || e.file.Name() != filePath {
 		err := e.createFile(filePath)
 		if err != nil {
-			return &pb.StorageObjectUploadResponse{Error: err.Error()}
+			return &storage_object.UploadResponse{Error: err.Error()}
 		}
 	}
 	_, err := e.file.WriteAt(bytes, start)
 	if err != nil {
-		return &pb.StorageObjectUploadResponse{Error: err.Error()}
+		return &storage_object.UploadResponse{Error: err.Error()}
 	}
-	return &pb.StorageObjectUploadResponse{}
+	return &storage_object.UploadResponse{}
 }
 
 // Download returns a chunk of bytes from a file
-func (e *StorageObject) Download(downloadRequest *pb.StorageObjectDownloadRequest) *pb.StorageObjectDownloadResponse {
+func (e *StorageObject) Download(downloadRequest *storage_object.DownloadRequest) *storage_object.DownloadResponse {
 	filePath := downloadRequest.FilePath
 	start := downloadRequest.Start
 	offset := downloadRequest.Offset
@@ -44,22 +44,22 @@ func (e *StorageObject) Download(downloadRequest *pb.StorageObjectDownloadReques
 	if e.file == nil || e.file.Name() != filePath {
 		err := e.openFile(filePath)
 		if err != nil {
-			return &pb.StorageObjectDownloadResponse{Error: err.Error()}
+			return &storage_object.DownloadResponse{Error: err.Error()}
 		}
 	}
 
 	_, err := e.file.Seek(start, 0)
 	if err != nil {
-		return &pb.StorageObjectDownloadResponse{Error: err.Error()}
+		return &storage_object.DownloadResponse{Error: err.Error()}
 	}
 
 	readBuffer := make([]byte, offset)
 	noBytesRead, err := e.file.Read(readBuffer)
 	if err != nil {
-		return &pb.StorageObjectDownloadResponse{Error: err.Error()}
+		return &storage_object.DownloadResponse{Error: err.Error()}
 	}
 
-	return &pb.StorageObjectDownloadResponse{
+	return &storage_object.DownloadResponse{
 		Bytes: readBuffer[:noBytesRead],
 	}
 }

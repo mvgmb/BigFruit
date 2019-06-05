@@ -88,7 +88,7 @@ func (e *ServerRequestHandler) Loop() {
 					log.Println(err)
 				}
 
-				if strings.HasPrefix(wrapper.Type, "*proto.StorageObject") {
+				if strings.HasPrefix(wrapper.Type, "*storage_object") {
 					res, err = storageInvoker.Invoke(wrapper.Type, req)
 					if err != nil {
 						res = util.ErrBadRequest

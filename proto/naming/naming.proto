@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package proto;
+package naming;
 
 message AOR {
     string host = 1;
@@ -8,35 +8,35 @@ message AOR {
     string id = 3;
 }
 
-message NamingServiceBindRequest {
+message BindRequest {
     string serviceName = 1;
     AOR aor = 2;
 }
-message NamingServiceBindResponse {
+message BindResponse {
     string error = 1;
 }
 
-message NamingServiceLookupRequest {
+message LookupRequest {
     string serviceName = 1;
 }
-message NamingServiceLookupResponse {
+message LookupResponse {
     AOR aor = 1;
     string error = 2;
 }
 
-message NamingServiceLookupManyRequest {
+message LookupManyRequest {
     string serviceName = 1;
     uint32 numberOfAor = 2;
 }
-message NamingServiceLookupManyResponse {
+message LookupManyResponse {
     repeated AOR aorList = 1;
     string error = 2;
 }
 
-message NamingServiceLookupAllRequest {
+message LookupAllRequest {
     string serviceName = 1;
 }
-message NamingServiceLookupAllResponse {
+message LookupAllResponse {
     repeated AOR aorList = 1;
     string error = 2;
 }

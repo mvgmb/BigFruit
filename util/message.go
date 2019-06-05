@@ -1,10 +1,13 @@
 package util
 
 import (
+	"log"
 	"reflect"
 
 	"github.com/golang/protobuf/proto"
+	storage_object "github.com/mvgmb/BigFruit/app/proto/storage_object"
 	pb "github.com/mvgmb/BigFruit/proto"
+	naming "github.com/mvgmb/BigFruit/proto/naming"
 )
 
 var (
@@ -28,19 +31,19 @@ type Options struct {
 var protoType = map[string]proto.Message{
 	"*proto.Error": &pb.Error{},
 
-	"*proto.StorageObjectUploadRequest":    &pb.StorageObjectUploadRequest{},
-	"*proto.StorageObjectUploadResponse":   &pb.StorageObjectUploadResponse{},
-	"*proto.StorageObjectDownloadRequest":  &pb.StorageObjectDownloadRequest{},
-	"*proto.StorageObjectDownloadResponse": &pb.StorageObjectDownloadResponse{},
+	"*storage_object.UploadRequest":    &storage_object.UploadRequest{},
+	"*storage_object.UploadResponse":   &storage_object.UploadResponse{},
+	"*storage_object.DownloadRequest":  &storage_object.DownloadRequest{},
+	"*storage_object.DownloadResponse": &storage_object.DownloadResponse{},
 
-	"*proto.NamingServiceBindRequest":        &pb.NamingServiceBindRequest{},
-	"*proto.NamingServiceBindResponse":       &pb.NamingServiceBindResponse{},
-	"*proto.NamingServiceLookupRequest":      &pb.NamingServiceLookupRequest{},
-	"*proto.NamingServiceLookupResponse":     &pb.NamingServiceLookupResponse{},
-	"*proto.NamingServiceLookupManyRequest":  &pb.NamingServiceLookupManyRequest{},
-	"*proto.NamingServiceLookupManyResponse": &pb.NamingServiceLookupManyResponse{},
-	"*proto.NamingServiceLookupAllRequest":   &pb.NamingServiceLookupAllRequest{},
-	"*proto.NamingServiceLookupAllResponse":  &pb.NamingServiceLookupAllResponse{},
+	"*naming.BindRequest":        &naming.BindRequest{},
+	"*naming.BindResponse":       &naming.BindResponse{},
+	"*naming.LookupRequest":      &naming.LookupRequest{},
+	"*naming.LookupResponse":     &naming.LookupResponse{},
+	"*naming.LookupManyRequest":  &naming.LookupManyRequest{},
+	"*naming.LookupManyResponse": &naming.LookupManyResponse{},
+	"*naming.LookupAllRequest":   &naming.LookupAllRequest{},
+	"*naming.LookupAllResponse":  &naming.LookupAllResponse{},
 }
 
 func WrapMessage(message proto.Message) ([]byte, error) {
@@ -63,7 +66,9 @@ func WrapMessage(message proto.Message) ([]byte, error) {
 }
 
 func UnwrapMessage(wrapper *pb.MessageWrapper) (proto.Message, error) {
+	log.Println(wrapper)
 	message := protoType[wrapper.Type]
+
 	err := proto.Unmarshal(wrapper.Message, message)
 	if err != nil {
 		return nil, err

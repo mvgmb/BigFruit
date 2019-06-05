@@ -2,7 +2,7 @@ package client
 
 import (
 	"github.com/golang/protobuf/proto"
-	pb "github.com/mvgmb/BigFruit/proto"
+	"github.com/mvgmb/BigFruit/app/proto/storage_object"
 	"github.com/mvgmb/BigFruit/util"
 )
 
@@ -13,7 +13,7 @@ func NewStorageObjectProxy() *StorageObjectProxy {
 }
 
 // Upload writes a chunk of bytes into a file
-func (e *StorageObjectProxy) Upload(reqApp chan *pb.StorageObjectUploadRequest, resApp chan *pb.StorageObjectUploadResponse) error {
+func (e *StorageObjectProxy) Upload(reqApp chan *storage_object.UploadRequest, resApp chan *storage_object.UploadResponse) error {
 	options := []*util.Options{
 		&util.Options{
 			Host:     "localhost",
@@ -43,7 +43,7 @@ func (e *StorageObjectProxy) Upload(reqApp chan *pb.StorageObjectUploadRequest, 
 		for {
 			res, more := <-resProxy
 			if more {
-				resApp <- res.(*pb.StorageObjectUploadResponse)
+				resApp <- res.(*storage_object.UploadResponse)
 			} else {
 				close(resApp)
 				done <- true
@@ -62,7 +62,7 @@ func (e *StorageObjectProxy) Upload(reqApp chan *pb.StorageObjectUploadRequest, 
 }
 
 // Download returns a chunk of bytes from a file
-func (e *StorageObjectProxy) Download(reqApp chan *pb.StorageObjectDownloadRequest, resApp chan *pb.StorageObjectDownloadResponse) error {
+func (e *StorageObjectProxy) Download(reqApp chan *storage_object.DownloadRequest, resApp chan *storage_object.DownloadResponse) error {
 	options := []*util.Options{
 		&util.Options{
 			Host:     "localhost",
@@ -92,7 +92,7 @@ func (e *StorageObjectProxy) Download(reqApp chan *pb.StorageObjectDownloadReque
 		for {
 			res, more := <-resProxy
 			if more {
-				resApp <- res.(*pb.StorageObjectDownloadResponse)
+				resApp <- res.(*storage_object.DownloadResponse)
 			} else {
 				close(resApp)
 				done <- true

@@ -1,7 +1,7 @@
 package server
 
 import (
-	pb "github.com/mvgmb/BigFruit/proto"
+	"github.com/mvgmb/BigFruit/proto/naming"
 	"github.com/mvgmb/BigFruit/util"
 )
 
@@ -11,7 +11,7 @@ var options = &util.Options{
 	Protocol: "tcp",
 }
 
-func Bind(bindRequest *pb.NamingServiceBindRequest) (*pb.NamingServiceBindResponse, error) {
+func Bind(bindRequest *naming.BindRequest) (*naming.BindResponse, error) {
 	requestor, err := NewRequestor(options)
 	if err != nil {
 		return nil, err
@@ -22,5 +22,5 @@ func Bind(bindRequest *pb.NamingServiceBindRequest) (*pb.NamingServiceBindRespon
 	}
 	requestor.Close()
 
-	return res.(*pb.NamingServiceBindResponse), nil
+	return res.(*naming.BindResponse), nil
 }

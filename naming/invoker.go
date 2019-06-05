@@ -5,6 +5,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	pb "github.com/mvgmb/BigFruit/proto"
+	naming "github.com/mvgmb/BigFruit/proto/naming"
 	"github.com/mvgmb/BigFruit/util"
 )
 
@@ -30,7 +31,7 @@ func NewInvoker(options *util.Options) (*Invoker, error) {
 
 func (e *Invoker) Invoke() {
 	log.Printf("Listening at %s:%d\n", e.serverRequestHandler.options.Host, e.serverRequestHandler.options.Port)
-
+	defer log.Println("die")
 	for {
 		err := e.serverRequestHandler.accept()
 		if err != nil {
@@ -63,14 +64,14 @@ func (e *Invoker) Invoke() {
 		}
 
 		switch wrapper.Type {
-		case "*proto.NamingServiceBindRequest":
-			res = bind(req.(*pb.NamingServiceBindRequest))
-		case "*proto.NamingServiceLookupRequest":
-			res = lookup(req.(*pb.NamingServiceLookupRequest))
-		case "*proto.NamingServiceLookupManyRequest":
-			res = lookupMany(req.(*pb.NamingServiceLookupManyRequest))
-		case "*proto.NamingServiceLookupAllRequest":
-			res = lookupAll(req.(*pb.NamingServiceLookupAllRequest))
+		case "*naming.BindRequest":
+			res = bind(req.(*naming.BindRequest))
+		case "*naming.LookupRequest":
+			res = lookup(req.(*naming.LookupRequest))
+		case "*naming.LookupManyRequest":
+			res = lookupMany(req.(*naming.LookupManyRequest))
+		case "*naming.LookupAllRequest":
+			res = lookupAll(req.(*naming.LookupAllRequest))
 		default:
 			res = util.ErrBadRequest
 		}
