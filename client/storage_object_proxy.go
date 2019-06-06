@@ -8,7 +8,8 @@ import (
 )
 
 type StorageObjectProxy struct {
-	requestors   []*Requestor
+	requestors []*Requestor
+
 	roundRobin   int
 	robinMutex   *sync.Mutex
 	robinMutexes []*sync.Mutex

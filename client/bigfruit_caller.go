@@ -13,8 +13,6 @@ type BigFruit struct {
 	proxy interface{}
 }
 
-const maxNoConcurrentRequestsPerServer = 1
-
 func NewBigFruit() *BigFruit {
 	return &BigFruit{}
 }
@@ -34,12 +32,7 @@ func (e *BigFruit) Call(objectName, methodName string, options []*util.Options, 
 	}
 
 	// Initialize internal channels
-	var internal []chan proto.Message
-	if replicate {
-		internal = make([]chan proto.Message, len(options))
-	} else {
-		internal = make([]chan proto.Message, maxNoConcurrentRequestsPerServer*len(options))
-	}
+	internal := make([]chan proto.Message, len(options))
 
 	errors := make([]chan error, len(internal))
 	for i := 0; i < len(internal); i++ {
@@ -53,14 +46,14 @@ func (e *BigFruit) Call(objectName, methodName string, options []*util.Options, 
 	waiting := make(chan bool)
 
 	go func() {
-		noRoutinesPerReq := 1
+		noRequestsPerRoutine := 1
 		if replicate {
-			noRoutinesPerReq = len(options)
+			noRequestsPerRoutine = len(options)
 		}
 		for {
 			request, more := <-reqCh
 			if more {
-				for i := 0; i < noRoutinesPerReq; i++ {
+				for i := 0; i < noRequestsPerRoutine; i++ {
 					waiting <- true
 					<-permission
 
