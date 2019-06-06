@@ -10,7 +10,6 @@ import (
 
 type Requestor struct {
 	requestHandler *clientRequestHandler
-	marshaller     *util.Marshaller
 }
 
 func NewRequestor(options *util.Options) (*Requestor, error) {
@@ -18,12 +17,7 @@ func NewRequestor(options *util.Options) (*Requestor, error) {
 	if err != nil {
 		return nil, err
 	}
-	marsh := util.NewMarshaller()
-
-	e := &Requestor{
-		requestHandler: rh,
-		marshaller:     marsh,
-	}
+	e := &Requestor{requestHandler: rh}
 
 	return e, nil
 }
@@ -33,33 +27,27 @@ func (e *Requestor) Close() error {
 }
 
 func (e *Requestor) Invoke(req proto.Message) (proto.Message, error) {
-	data, err := util.WrapMessage(req)
+	bytes, err := util.WrapMessage(req)
 	if err != nil {
 		return nil, err
 	}
 
-	err = e.requestHandler.send(&data)
+	err = e.requestHandler.send(&bytes)
 	if err != nil {
 		return nil, err
 	}
 
-	data, err = e.requestHandler.receive()
-	if err != nil {
-		return nil, err
-	}
-	wrapper := &pb.MessageWrapper{}
-
-	err = e.marshaller.Unmarshal(&data, wrapper)
+	bytes, err = e.requestHandler.receive()
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := util.UnwrapMessage(wrapper)
+	res, _, responseType, err := util.UnwrapMessage(bytes)
 	if err != nil {
 		return nil, err
 	}
 
-	if wrapper.Type == "*proto.Error" {
+	if responseType == "Error" {
 		return nil, fmt.Errorf((res.(*pb.Error)).Message)
 	}
 

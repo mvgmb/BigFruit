@@ -1,7 +1,10 @@
 package main
 
 import (
+	"encoding/binary"
 	"log"
+	"os"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/mvgmb/BigFruit/app/proto/storage_object"
@@ -13,7 +16,7 @@ import (
 func main() {
 	lookupManyRequest := &naming.LookupManyRequest{
 		ServiceName: "StorageObject",
-		NumberOfAor: 1,
+		NumberOfAor: 3,
 	}
 	res, err := client.LookupMany(lookupManyRequest)
 	if err != nil {
@@ -31,7 +34,73 @@ func main() {
 		}
 		options = append(options, option)
 	}
+	noTests := 10
+	results := make([]time.Duration, noTests)
 
+	// miniJavaSkeletonSize := int32(101449)]
+	dataZipSize := int32(434402557)
+	for i := 0; i < 10; i++ {
+		results[i] = download("/home/mario/Desktop/data.zip", "data.zip", dataZipSize, 20000, options)
+	}
+	log.Println(results)
+
+}
+
+func download(filePath, outputPath string, noBytes, offset int32, options []*util.Options) time.Duration {
+	reqCh := make(chan proto.Message)
+	resCh := make(chan proto.Message)
+
+	bf := client.NewBigFruit()
+
+	go func() {
+		var i int32
+		for i = 0; i < noBytes; i += offset {
+			reqCh <- &storage_object.DownloadRequest{
+				FilePath: filePath,
+				Start:    int64(i),
+				Offset:   offset,
+			}
+		}
+		close(reqCh)
+	}()
+
+	done := make(chan bool)
+	go func() {
+		file, err := os.Create(outputPath)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer file.Close()
+
+		cur := int64(0)
+		for {
+			res, more := <-resCh
+			if more {
+				response := res.(*storage_object.DownloadResponse)
+				_, err = file.WriteAt(response.Bytes, cur)
+				if err != nil {
+					log.Println(err)
+				}
+				cur += int64(binary.Size(response.Bytes))
+			} else {
+				break
+			}
+		}
+		done <- true
+
+	}()
+	t := time.Now()
+	err := bf.Call("StorageObject", "Download", options, false, reqCh, resCh)
+	if err != nil {
+		done <- true
+		log.Println(err)
+	}
+	<-done
+	return time.Since(t)
+}
+
+func upload(options []*util.Options) {
 	reqCh := make(chan proto.Message)
 	resCh := make(chan proto.Message)
 
@@ -67,83 +136,3 @@ func main() {
 		}
 	}
 }
-
-// func upload() {
-// 	reqs := make([]*storage_object.UploadRequest, 2)
-// 	reqs[0] = &storage_object.UploadRequest{
-// 		FilePath: "/home/mario/Documents/git/BigFruit/data1.txt",
-// 		Start:    0,
-// 		Bytes:    []byte("cacholo1"),
-// 	}
-// 	reqs[1] = &storage_object.UploadRequest{
-// 		FilePath: "/home/mario/Documents/git/BigFruit/data2.txt",
-// 		Start:    0,
-// 		Bytes:    []byte("cacholo2"),
-// 	}
-// 	req := make(chan *storage_object.UploadRequest)
-// 	res := make(chan *storage_object.UploadResponse)
-
-// 	sop := client.StorageObjectProxy{}
-
-// 	done := make(chan bool)
-
-// 	go func() {
-// 		for {
-// 			response, more := <-res
-// 			if more {
-// 				log.Println(response)
-// 			} else {
-// 				done <- true
-// 				return
-// 			}
-// 		}
-// 	}()
-// 	go func() {
-// 		req <- reqs[0]
-// 		req <- reqs[1]
-// 		close(req)
-// 	}()
-
-// 	err := sop.Upload(req, res)
-// 	if err != nil {
-// 		log.Println(err)
-// 	}
-// 	<-done
-// }
-
-// func download() {
-// 	req := make(chan *storage_object.DownloadRequest)
-// 	res := make(chan *storage_object.DownloadResponse)
-
-// 	sop := client.StorageObjectProxy{}
-
-// 	done := make(chan bool)
-
-// 	go func() {
-// 		for {
-// 			response, more := <-res
-// 			if more {
-// 				log.Println(response)
-// 			} else {
-// 				done <- true
-// 				return
-// 			}
-// 		}
-// 	}()
-// 	go func() {
-// 		request := &storage_object.DownloadRequest{
-// 			FilePath: "/home/mario/Documents/git/BigFruit/MiniJavaSkeleton.zip",
-// 			Start:    0,
-// 			Offset:   100,
-// 		}
-// 		req <- request
-// 		close(req)
-// 	}()
-
-// 	err := sop.Download(req, res)
-// 	if err != nil {
-// 		log.Println(err)
-// 		done <- true
-// 	}
-// 	<-done
-// }

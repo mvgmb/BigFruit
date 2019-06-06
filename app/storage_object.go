@@ -40,7 +40,6 @@ func (e *StorageObject) Download(downloadRequest *storage_object.DownloadRequest
 	filePath := downloadRequest.FilePath
 	start := downloadRequest.Start
 	offset := downloadRequest.Offset
-
 	if e.file == nil || e.file.Name() != filePath {
 		err := e.openFile(filePath)
 		if err != nil {

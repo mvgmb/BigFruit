@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/mvgmb/BigFruit/app/proto/storage_object"
@@ -12,7 +13,7 @@ type BigFruit struct {
 	proxy interface{}
 }
 
-const maxNoConcurrentRequestsPerServer = 3
+const maxNoConcurrentRequestsPerServer = 1
 
 func NewBigFruit() *BigFruit {
 	return &BigFruit{}
@@ -46,78 +47,81 @@ func (e *BigFruit) Call(objectName, methodName string, options []*util.Options, 
 		errors[i] = make(chan error)
 	}
 
-	closed := false
+	lastRequestID := -1
+	requestsCurID := 0
 	permission := make(chan bool)
+	waiting := make(chan bool)
 
 	go func() {
-		curID := 0
-		requestorsRobin := 0
 		noRoutinesPerReq := 1
 		if replicate {
 			noRoutinesPerReq = len(options)
 		}
-
 		for {
 			request, more := <-reqCh
 			if more {
 				for i := 0; i < noRoutinesPerReq; i++ {
+					waiting <- true
 					<-permission
 
-					go func(id, requestorIndex int) {
+					go func(id int, request proto.Message) {
 						index := id % len(internal)
-
-						res, err := callObject(objectName, methodName, e.proxy, request)
+						protoMessage, err := callObject(objectName, methodName, e.proxy, request)
+						if err != nil {
+							log.Println(err)
+						}
 						errors[index] <- err
-						internal[index] <- res
-					}(curID, requestorsRobin)
+						internal[index] <- protoMessage
+					}(requestsCurID, request)
 
-					curID++
-					requestorsRobin++
-					if requestorsRobin >= len(options) {
-						requestorsRobin = 0
-					}
+					requestsCurID++
 				}
 			} else {
-				closed = true
+				close(waiting)
+				lastRequestID = requestsCurID - 1
 				break
 			}
 		}
 	}()
 
+	more := true
 	// Initize as many go routines as possible
-	for i := 0; i < len(internal); i++ {
+	for i := 0; i < len(internal) && more; i++ {
+		_, more = <-waiting
 		permission <- true
 	}
 
-	curID := 0
+	responsesCurID := 0
+
 	// The idea is to consume and then initialize a new go routine
 	for {
-		i := curID % len(internal)
+		i := responsesCurID % len(internal)
 
 		err := <-errors[i]
 		if err != nil {
 			return err
 		}
+		resCh <- <-internal[i]
 
-		res := <-internal[i]
-		resCh <- res
-
-		if closed {
+		if responsesCurID == lastRequestID {
 			close(resCh)
 			break
 		}
-		permission <- true
-		curID++
-	}
 
+		_, more = <-waiting
+		if more {
+			permission <- true
+		}
+
+		responsesCurID++
+	}
 	return nil
 }
 
 func callObject(objectName, methodName string, proxy interface{}, req proto.Message) (proto.Message, error) {
 	switch objectName {
 	case "StorageObject":
-		res, err := callStorageObjectMethod(methodName, proxy.(*StorageObjectProxy), req)
-		return res, err
+		return callStorageObjectMethod(methodName, proxy.(*StorageObjectProxy), req)
 	default:
 		return nil, fmt.Errorf("Object not found")
 	}
@@ -126,11 +130,9 @@ func callObject(objectName, methodName string, proxy interface{}, req proto.Mess
 func callStorageObjectMethod(methodName string, proxy *StorageObjectProxy, req proto.Message) (proto.Message, error) {
 	switch methodName {
 	case "Upload":
-		res, err := proxy.Upload(req.(*storage_object.UploadRequest))
-		return res, err
+		return proxy.Upload(req.(*storage_object.UploadRequest))
 	case "Download":
-		res, err := proxy.Download(req.(*storage_object.DownloadRequest))
-		return res, err
+		return proxy.Download(req.(*storage_object.DownloadRequest))
 	default:
 		return nil, fmt.Errorf("Method not found")
 	}

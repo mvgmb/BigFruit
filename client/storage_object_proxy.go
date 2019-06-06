@@ -8,10 +8,16 @@ import (
 )
 
 type StorageObjectProxy struct {
-	requestors []*Requestor
-	roundRobin int
-	robinMutex *sync.Mutex
+	requestors   []*Requestor
+	roundRobin   int
+	robinMutex   *sync.Mutex
+	robinMutexes []*sync.Mutex
 }
+
+var (
+	lock   = 0
+	unlock = 0
+)
 
 func NewStorageObjectProxy(options []*util.Options) (*StorageObjectProxy, error) {
 	var requestors []*Requestor
@@ -22,40 +28,52 @@ func NewStorageObjectProxy(options []*util.Options) (*StorageObjectProxy, error)
 		}
 		requestors = append(requestors, requestor)
 	}
+	rm := make([]*sync.Mutex, len(options))
+	for i := range rm {
+		rm[i] = &sync.Mutex{}
+	}
 	e := &StorageObjectProxy{
-		requestors: requestors,
-		roundRobin: -1,
-		robinMutex: &sync.Mutex{},
+		requestors:   requestors,
+		roundRobin:   -1,
+		robinMutex:   &sync.Mutex{},
+		robinMutexes: rm,
 	}
 	return e, nil
 }
 
 // Upload writes a chunk of bytes into a file
 func (e *StorageObjectProxy) Upload(req *storage_object.UploadRequest) (*storage_object.UploadResponse, error) {
+	e.robinMutex.Lock()
 	roundRobin := e.getNextRobin()
+	e.robinMutex.Unlock()
 
+	e.robinMutexes[roundRobin].Lock()
 	res, err := e.requestors[roundRobin].Invoke(req)
 	if err != nil {
 		return nil, err
 	}
+	e.robinMutexes[roundRobin].Unlock()
+
 	return res.(*storage_object.UploadResponse), nil
 }
 
 // Download returns a chunk of bytes from a file
 func (e *StorageObjectProxy) Download(req *storage_object.DownloadRequest) (*storage_object.DownloadResponse, error) {
+	e.robinMutex.Lock()
 	roundRobin := e.getNextRobin()
+	e.robinMutex.Unlock()
 
+	e.robinMutexes[roundRobin].Lock()
 	res, err := e.requestors[roundRobin].Invoke(req)
 	if err != nil {
 		return nil, err
 	}
+	e.robinMutexes[roundRobin].Unlock()
+
 	return res.(*storage_object.DownloadResponse), nil
 }
 
 func (e *StorageObjectProxy) getNextRobin() int {
-	e.robinMutex.Lock()
-	defer e.robinMutex.Unlock()
-
 	e.roundRobin++
 	if e.roundRobin >= len(e.requestors) {
 		e.roundRobin = 0

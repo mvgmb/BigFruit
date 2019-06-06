@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/proto"
-	pb "github.com/mvgmb/BigFruit/proto"
 	"github.com/mvgmb/BigFruit/util"
 )
 
@@ -49,7 +48,6 @@ func NewServerRequestHandler(options *util.Options) (*ServerRequestHandler, erro
 }
 
 func (e *ServerRequestHandler) Loop() {
-	marshaller := util.NewMarshaller()
 	storageInvoker := NewStorageObjectInvoker()
 
 	log.Printf("Listening at %s:%d", e.Options.Host, e.Options.Port)
@@ -69,48 +67,38 @@ func (e *ServerRequestHandler) Loop() {
 				break
 			}
 
-			go func() {
-				var res proto.Message
+			var res proto.Message
 
-				bytes := buffer[:n]
+			bytes := buffer[:n]
 
-				wrapper := &pb.MessageWrapper{}
+			req, objectName, requestName, err := util.UnwrapMessage(bytes)
+			if err != nil {
+				log.Println(err)
+			}
 
-				err = marshaller.Unmarshal(&bytes, wrapper)
+			switch objectName {
+			case "*storage_object":
+				res, err = storageInvoker.Invoke(requestName, req)
 				if err != nil {
-					// TODO handle error
-					log.Println(err)
-					return
-				}
-
-				req, err := util.UnwrapMessage(wrapper)
-				if err != nil {
-					log.Println(err)
-				}
-
-				if strings.HasPrefix(wrapper.Type, "*storage_object") {
-					res, err = storageInvoker.Invoke(wrapper.Type, req)
-					if err != nil {
-						res = util.ErrBadRequest
-					}
-				} else {
 					res = util.ErrBadRequest
 				}
+			default:
+				res = util.ErrBadRequest
+			}
 
-				bytes, err = util.WrapMessage(res)
-				if err != nil {
-					// TODO handle error
-					log.Println(err)
-					return
-				}
+			bytes, err = util.WrapMessage(res)
+			if err != nil {
+				// TODO handle error
+				log.Println(err)
+				return
+			}
 
-				_, err = netConn.Write(bytes)
-				if err != nil {
-					// TODO handle error
-					log.Println(err)
-					return
-				}
-			}()
+			_, err = netConn.Write(bytes)
+			if err != nil {
+				// TODO handle error
+				log.Println(err)
+				return
+			}
 		}
 		netConn.Close()
 	}

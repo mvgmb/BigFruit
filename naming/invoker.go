@@ -4,14 +4,12 @@ import (
 	"log"
 
 	"github.com/golang/protobuf/proto"
-	pb "github.com/mvgmb/BigFruit/proto"
 	naming "github.com/mvgmb/BigFruit/proto/naming"
 	"github.com/mvgmb/BigFruit/util"
 )
 
 type Invoker struct {
 	serverRequestHandler *serverRequestHandler
-	marshaller           *util.Marshaller
 }
 
 func NewInvoker(options *util.Options) (*Invoker, error) {
@@ -19,13 +17,8 @@ func NewInvoker(options *util.Options) (*Invoker, error) {
 	if err != nil {
 		return nil, err
 	}
+	e := &Invoker{serverRequestHandler: rh}
 
-	marsh := util.NewMarshaller()
-
-	e := &Invoker{
-		serverRequestHandler: rh,
-		marshaller:           marsh,
-	}
 	return e, nil
 }
 
@@ -49,29 +42,25 @@ func (e *Invoker) Invoke() {
 
 		var res proto.Message
 
-		wrapper := pb.MessageWrapper{}
-
-		err = e.marshaller.Unmarshal(&bytes, &wrapper)
-		if err != nil {
-			// TODO handle error
-			log.Println(err)
-			break
-		}
-
-		req, err := util.UnwrapMessage(&wrapper)
+		req, objectType, requestType, err := util.UnwrapMessage(bytes)
 		if err != nil {
 			log.Println(err)
 		}
 
-		switch wrapper.Type {
-		case "*naming.BindRequest":
-			res = bind(req.(*naming.BindRequest))
-		case "*naming.LookupRequest":
-			res = lookup(req.(*naming.LookupRequest))
-		case "*naming.LookupManyRequest":
-			res = lookupMany(req.(*naming.LookupManyRequest))
-		case "*naming.LookupAllRequest":
-			res = lookupAll(req.(*naming.LookupAllRequest))
+		switch objectType {
+		case "*naming":
+			switch requestType {
+			case "BindRequest":
+				res = bind(req.(*naming.BindRequest))
+			case "LookupRequest":
+				res = lookup(req.(*naming.LookupRequest))
+			case "LookupManyRequest":
+				res = lookupMany(req.(*naming.LookupManyRequest))
+			case "LookupAllRequest":
+				res = lookupAll(req.(*naming.LookupAllRequest))
+			default:
+				res = util.ErrBadRequest
+			}
 		default:
 			res = util.ErrBadRequest
 		}

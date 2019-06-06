@@ -11,7 +11,7 @@ import (
 var (
 	options = &util.Options{
 		Host:     "localhost",
-		Port:     8080,
+		Port:     0,
 		Protocol: "tcp",
 	}
 )
