@@ -16,7 +16,7 @@ import (
 func main() {
 	lookupManyRequest := &naming.LookupManyRequest{
 		ServiceName: "StorageObject",
-		NumberOfAor: 3,
+		NumberOfAor: 2,
 	}
 	res, err := client.LookupMany(lookupManyRequest)
 	if err != nil {
@@ -34,13 +34,14 @@ func main() {
 		}
 		options = append(options, option)
 	}
-	noTests := 10
+	noTests := 1
 	results := make([]time.Duration, noTests)
 
-	// miniJavaSkeletonSize := int32(101449)]
-	dataZipSize := int32(434402557)
-	for i := 0; i < 10; i++ {
-		results[i] = download("/home/mario/Desktop/data.zip", "data.zip", dataZipSize, 20000, options)
+	// ifunnySize := int32(28410416)
+	// sub55Size := int32(4481)
+	dataSize := int32(434402557)
+	for i := 0; i < noTests; i++ {
+		results[i] = upload("/home/mario/Desktop/data.zip", "data.zip", dataSize, 21500, options)
 	}
 	log.Println(results)
 
@@ -67,7 +68,6 @@ func download(filePath, outputPath string, noBytes, offset int32, options []*uti
 	done := make(chan bool)
 	go func() {
 		file, err := os.Create(outputPath)
-
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -100,39 +100,65 @@ func download(filePath, outputPath string, noBytes, offset int32, options []*uti
 	return time.Since(t)
 }
 
-func upload(options []*util.Options) {
+func upload(filePath, outputPath string, noBytes, offset int32, options []*util.Options) time.Duration {
 	reqCh := make(chan proto.Message)
 	resCh := make(chan proto.Message)
 
-	reqs := make([]*storage_object.UploadRequest, 2)
-	reqs[0] = &storage_object.UploadRequest{
-		FilePath: "/home/mario/Documents/git/BigFruit/data1.txt",
-		Start:    0,
-		Bytes:    []byte("cachsssssssssssolo1"),
-	}
-	reqs[1] = &storage_object.UploadRequest{
-		FilePath: "/home/mario/Documents/git/BigFruit/data2.txt",
-		Start:    0,
-		Bytes:    []byte("cacholo2"),
-	}
-
 	bf := client.NewBigFruit()
 
-	go bf.Call("StorageObject", "Upload", options, true, reqCh, resCh)
-
 	go func() {
-		for i := range reqs {
-			reqCh <- reqs[i]
+		file, err := os.Open(filePath)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer file.Close()
+
+		noReq := 0
+		var cur int32
+		for cur = 0; cur < noBytes; cur += offset {
+			_, err = file.Seek(int64(cur), 0)
+			if err != nil {
+				log.Println(err)
+			}
+
+			buffer := make([]byte, offset)
+			noBytesRead, err := file.Read(buffer)
+			if err != nil {
+				log.Println(err)
+			}
+
+			reqCh <- &storage_object.UploadRequest{
+				FilePath: outputPath,
+				Start:    int64(cur),
+				Bytes:    buffer[:noBytesRead],
+			}
+			noReq++
 		}
 		close(reqCh)
 	}()
 
-	for {
-		res, more := <-resCh
-		if more {
-			log.Println(res)
-		} else {
-			break
+	done := make(chan bool)
+	go func() {
+		for {
+			res, more := <-resCh
+			if more {
+				response := res.(*storage_object.UploadResponse)
+				if response.Error != "" {
+					log.Println(response.Error)
+				}
+			} else {
+				break
+			}
 		}
+		done <- true
+	}()
+
+	t := time.Now()
+	err := bf.Call("StorageObject", "Upload", options, true, reqCh, resCh)
+	if err != nil {
+		done <- true
+		log.Println(err)
 	}
+	<-done
+	return time.Since(t)
 }

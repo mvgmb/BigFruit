@@ -54,24 +54,25 @@ func (e *BigFruit) Call(objectName, methodName string, options []*util.Options, 
 			request, more := <-reqCh
 			if more {
 				for i := 0; i < noRequestsPerRoutine; i++ {
+					index := requestsCurID % len(options)
+
 					waiting <- true
 					<-permission
 
-					go func(id int, request proto.Message) {
-						index := id % len(internal)
-						protoMessage, err := callObject(objectName, methodName, e.proxy, request)
+					go func() {
+						protoMessage, err := callObject(index, objectName, methodName, e.proxy, request)
 						if err != nil {
 							log.Println(err)
 						}
 						errors[index] <- err
 						internal[index] <- protoMessage
-					}(requestsCurID, request)
+					}()
 
 					requestsCurID++
 				}
 			} else {
 				close(waiting)
-				lastRequestID = requestsCurID - 1
+				lastRequestID = requestsCurID
 				break
 			}
 		}
@@ -79,7 +80,7 @@ func (e *BigFruit) Call(objectName, methodName string, options []*util.Options, 
 
 	more := true
 	// Initize as many go routines as possible
-	for i := 0; i < len(internal) && more; i++ {
+	for i := 0; i < len(options) && more; i++ {
 		_, more = <-waiting
 		permission <- true
 	}
@@ -88,14 +89,15 @@ func (e *BigFruit) Call(objectName, methodName string, options []*util.Options, 
 
 	// The idea is to consume and then initialize a new go routine
 	for {
-		i := responsesCurID % len(internal)
+		index := responsesCurID % len(internal)
 
-		err := <-errors[i]
+		err := <-errors[index]
 		if err != nil {
 			return err
 		}
-		resCh <- <-internal[i]
+		resCh <- <-internal[index]
 
+		responsesCurID++
 		if responsesCurID == lastRequestID {
 			close(resCh)
 			break
@@ -105,27 +107,25 @@ func (e *BigFruit) Call(objectName, methodName string, options []*util.Options, 
 		if more {
 			permission <- true
 		}
-
-		responsesCurID++
 	}
 	return nil
 }
 
-func callObject(objectName, methodName string, proxy interface{}, req proto.Message) (proto.Message, error) {
+func callObject(requestorIndex int, objectName, methodName string, proxy interface{}, req proto.Message) (proto.Message, error) {
 	switch objectName {
 	case "StorageObject":
-		return callStorageObjectMethod(methodName, proxy.(*StorageObjectProxy), req)
+		return callStorageObjectMethod(requestorIndex, methodName, proxy.(*StorageObjectProxy), req)
 	default:
 		return nil, fmt.Errorf("Object not found")
 	}
 }
 
-func callStorageObjectMethod(methodName string, proxy *StorageObjectProxy, req proto.Message) (proto.Message, error) {
+func callStorageObjectMethod(requestorIndex int, methodName string, proxy *StorageObjectProxy, req proto.Message) (proto.Message, error) {
 	switch methodName {
 	case "Upload":
-		return proxy.Upload(req.(*storage_object.UploadRequest))
+		return proxy.Upload(requestorIndex, req.(*storage_object.UploadRequest))
 	case "Download":
-		return proxy.Download(req.(*storage_object.DownloadRequest))
+		return proxy.Download(requestorIndex, req.(*storage_object.DownloadRequest))
 	default:
 		return nil, fmt.Errorf("Method not found")
 	}

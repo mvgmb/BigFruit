@@ -11,7 +11,6 @@ type StorageObjectProxy struct {
 	requestors []*Requestor
 
 	roundRobin   int
-	robinMutex   *sync.Mutex
 	robinMutexes []*sync.Mutex
 }
 
@@ -35,41 +34,31 @@ func NewStorageObjectProxy(options []*util.Options) (*StorageObjectProxy, error)
 	}
 	e := &StorageObjectProxy{
 		requestors:   requestors,
-		roundRobin:   -1,
-		robinMutex:   &sync.Mutex{},
 		robinMutexes: rm,
 	}
 	return e, nil
 }
 
 // Upload writes a chunk of bytes into a file
-func (e *StorageObjectProxy) Upload(req *storage_object.UploadRequest) (*storage_object.UploadResponse, error) {
-	e.robinMutex.Lock()
-	roundRobin := e.getNextRobin()
-	e.robinMutex.Unlock()
-
-	e.robinMutexes[roundRobin].Lock()
-	res, err := e.requestors[roundRobin].Invoke(req)
+func (e *StorageObjectProxy) Upload(requestorIndex int, req *storage_object.UploadRequest) (*storage_object.UploadResponse, error) {
+	e.robinMutexes[requestorIndex].Lock()
+	res, err := e.requestors[requestorIndex].Invoke(req)
 	if err != nil {
 		return nil, err
 	}
-	e.robinMutexes[roundRobin].Unlock()
+	e.robinMutexes[requestorIndex].Unlock()
 
 	return res.(*storage_object.UploadResponse), nil
 }
 
 // Download returns a chunk of bytes from a file
-func (e *StorageObjectProxy) Download(req *storage_object.DownloadRequest) (*storage_object.DownloadResponse, error) {
-	e.robinMutex.Lock()
-	roundRobin := e.getNextRobin()
-	e.robinMutex.Unlock()
-
-	e.robinMutexes[roundRobin].Lock()
-	res, err := e.requestors[roundRobin].Invoke(req)
+func (e *StorageObjectProxy) Download(requestorIndex int, req *storage_object.DownloadRequest) (*storage_object.DownloadResponse, error) {
+	e.robinMutexes[requestorIndex].Lock()
+	res, err := e.requestors[requestorIndex].Invoke(req)
 	if err != nil {
 		return nil, err
 	}
-	e.robinMutexes[roundRobin].Unlock()
+	e.robinMutexes[requestorIndex].Unlock()
 
 	return res.(*storage_object.DownloadResponse), nil
 }
