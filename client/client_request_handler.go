@@ -2,7 +2,6 @@ package client
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"net"
 
@@ -21,7 +20,7 @@ func newClientRequestHandler(options *util.Options) (*clientRequestHandler, erro
 	e := &clientRequestHandler{
 		netConn: netConn,
 	}
-	log.Println("connected to", fmt.Sprintf("%s:%d", options.Host, options.Port))
+	// log.Println("connected to", fmt.Sprintf("%s:%d", options.Host, options.Port))
 	return e, nil
 }
 
@@ -30,7 +29,7 @@ func (e *clientRequestHandler) close() error {
 	if err != nil {
 		return err
 	}
-	log.Println("disconnected from", e.netConn.RemoteAddr())
+	// log.Println("disconnected from", e.netConn.RemoteAddr())
 	return nil
 }
 

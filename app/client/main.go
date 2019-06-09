@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/binary"
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -41,9 +42,14 @@ func main() {
 	// sub55Size := int32(4481)
 	dataSize := int32(434402557)
 	for i := 0; i < noTests; i++ {
-		results[i] = upload("/home/mario/Desktop/data.zip", "data.zip", dataSize, 21500, options)
+		results[i] = download("/home/mario/Desktop/data.zip", "data.zip", dataSize, 21500, options)
+		fmt.Println(results[i])
+		err := os.Remove("data.zip")
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
-	log.Println(results)
+	fmt.Println(results)
 
 }
 

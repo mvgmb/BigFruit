@@ -10,7 +10,7 @@ import (
 )
 
 type BigFruit struct {
-	proxy interface{}
+	proxies interface{}
 }
 
 func NewBigFruit() *BigFruit {
@@ -18,15 +18,19 @@ func NewBigFruit() *BigFruit {
 }
 
 func (e *BigFruit) Call(objectName, methodName string, options []*util.Options, replicate bool, reqCh, resCh chan proto.Message) error {
-	// Initialize proxy
+	// Initialize proxies
 	switch objectName {
 	case "StorageObject":
-		proxy, err := NewStorageObjectProxy(options)
-		if err != nil {
-			return err
+		var proxies []*StorageObjectProxy
+		for i := range options {
+			proxy, err := NewStorageObjectProxy(options[i])
+			if err != nil {
+				return err
+			}
+			defer proxy.Close()
+			proxies = append(proxies, proxy)
 		}
-		defer proxy.Close()
-		e.proxy = proxy
+		e.proxies = proxies
 	default:
 		return fmt.Errorf("Object requested not found")
 	}
@@ -60,7 +64,7 @@ func (e *BigFruit) Call(objectName, methodName string, options []*util.Options, 
 					<-permission
 
 					go func() {
-						protoMessage, err := callObject(index, objectName, methodName, e.proxy, request)
+						protoMessage, err := e.callObject(index, objectName, methodName, request)
 						if err != nil {
 							log.Println(err)
 						}
@@ -85,9 +89,8 @@ func (e *BigFruit) Call(objectName, methodName string, options []*util.Options, 
 		permission <- true
 	}
 
-	responsesCurID := 0
-
 	// The idea is to consume and then initialize a new go routine
+	responsesCurID := 0
 	for {
 		index := responsesCurID % len(internal)
 
@@ -111,21 +114,21 @@ func (e *BigFruit) Call(objectName, methodName string, options []*util.Options, 
 	return nil
 }
 
-func callObject(requestorIndex int, objectName, methodName string, proxy interface{}, req proto.Message) (proto.Message, error) {
+func (e *BigFruit) callObject(requestorIndex int, objectName, methodName string, req proto.Message) (proto.Message, error) {
 	switch objectName {
 	case "StorageObject":
-		return callStorageObjectMethod(requestorIndex, methodName, proxy.(*StorageObjectProxy), req)
+		return e.callStorageObjectMethod(requestorIndex, methodName, req)
 	default:
 		return nil, fmt.Errorf("Object not found")
 	}
 }
 
-func callStorageObjectMethod(requestorIndex int, methodName string, proxy *StorageObjectProxy, req proto.Message) (proto.Message, error) {
+func (e *BigFruit) callStorageObjectMethod(requestorIndex int, methodName string, req proto.Message) (proto.Message, error) {
 	switch methodName {
 	case "Upload":
-		return proxy.Upload(requestorIndex, req.(*storage_object.UploadRequest))
+		return e.proxies.([]*StorageObjectProxy)[requestorIndex].Upload(req.(*storage_object.UploadRequest))
 	case "Download":
-		return proxy.Download(requestorIndex, req.(*storage_object.DownloadRequest))
+		return e.proxies.([]*StorageObjectProxy)[requestorIndex].Download(req.(*storage_object.DownloadRequest))
 	default:
 		return nil, fmt.Errorf("Method not found")
 	}
