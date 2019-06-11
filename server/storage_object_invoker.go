@@ -4,17 +4,17 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/mvgmb/BigFruit/app"
 	storage_object "github.com/mvgmb/BigFruit/app/proto/storage_object"
+	"github.com/mvgmb/BigFruit/app/server/objects"
 )
 
 type StorageObjectInvoker struct {
-	storageObject *app.StorageObject
+	storageObject *objects.StorageObject
 }
 
 func NewStorageObjectInvoker() *StorageObjectInvoker {
 	return &StorageObjectInvoker{
-		storageObject: app.NewStorageObject(),
+		storageObject: objects.NewStorageObject(),
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"time"
 
 	"github.com/mvgmb/BigFruit/util"
 )
@@ -13,7 +14,11 @@ type clientRequestHandler struct {
 }
 
 func newClientRequestHandler(options *util.Options) (*clientRequestHandler, error) {
-	netConn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", options.Host, options.Port))
+	d := net.Dialer{
+		Timeout: 5 * time.Minute,
+	}
+
+	netConn, err := d.Dial("tcp", fmt.Sprintf("%s:%d", options.Host, options.Port))
 	if err != nil {
 		return nil, err
 	}

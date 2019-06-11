@@ -48,7 +48,7 @@ func NewServerRequestHandler(options *util.Options) (*ServerRequestHandler, erro
 }
 
 func (e *ServerRequestHandler) Loop() {
-	storageInvoker := NewStorageObjectInvoker()
+	storageObjectInvoker := NewStorageObjectInvoker()
 
 	log.Printf("Listening at %s:%d", e.Options.Host, e.Options.Port)
 
@@ -78,7 +78,7 @@ func (e *ServerRequestHandler) Loop() {
 
 			switch objectName {
 			case "*storage_object":
-				res, err = storageInvoker.Invoke(requestName, req)
+				res, err = storageObjectInvoker.Invoke(requestName, req)
 				if err != nil {
 					res = util.ErrBadRequest
 				}

@@ -17,7 +17,7 @@ func NewBigFruit() *BigFruit {
 	return &BigFruit{}
 }
 
-func (e *BigFruit) Call(objectName, methodName string, options []*util.Options, replicate bool, reqCh, resCh chan proto.Message) error {
+func (e *BigFruit) Invoke(objectName, methodName string, options []*util.Options, replicate bool, reqCh, resCh chan proto.Message) error {
 	// Initialize proxies
 	switch objectName {
 	case "StorageObject":

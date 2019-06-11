@@ -1,4 +1,4 @@
-package app
+package objects
 
 import (
 	"os"

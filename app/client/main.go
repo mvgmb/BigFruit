@@ -17,13 +17,13 @@ import (
 func main() {
 	lookupManyRequest := &naming.LookupManyRequest{
 		ServiceName: "StorageObject",
-		NumberOfAor: 2,
+		NumberOfAor: 1,
 	}
 	res, err := client.LookupMany(lookupManyRequest)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println(res)
+	fmt.Println(len(res.AorList))
 
 	var options []*util.Options
 
@@ -38,26 +38,20 @@ func main() {
 	noTests := 1
 	results := make([]time.Duration, noTests)
 
-	// ifunnySize := int32(28410416)
-	// sub55Size := int32(4481)
-	dataSize := int32(434402557)
+	dataSize := int32(645794886)
+	total := float64(0)
 	for i := 0; i < noTests; i++ {
-		results[i] = download("/home/mario/Desktop/data.zip", "data.zip", dataSize, 21500, options)
+		results[i] = download("/home/mario/Desktop/data2.zip", "data2.zip", dataSize, 21500, options)
 		fmt.Println(results[i])
-		err := os.Remove("data.zip")
-		if err != nil {
-			fmt.Println(err)
-		}
+		total += results[i].Seconds()
 	}
 	fmt.Println(results)
-
+	fmt.Println("avg", total/float64(len(results)))
 }
 
 func download(filePath, outputPath string, noBytes, offset int32, options []*util.Options) time.Duration {
 	reqCh := make(chan proto.Message)
 	resCh := make(chan proto.Message)
-
-	bf := client.NewBigFruit()
 
 	go func() {
 		var i int32
@@ -96,8 +90,10 @@ func download(filePath, outputPath string, noBytes, offset int32, options []*uti
 		done <- true
 
 	}()
+	bigFruit := client.NewBigFruit()
+
 	t := time.Now()
-	err := bf.Call("StorageObject", "Download", options, false, reqCh, resCh)
+	err := bigFruit.Invoke("StorageObject", "Download", options, false, reqCh, resCh)
 	if err != nil {
 		done <- true
 		log.Println(err)
@@ -109,8 +105,6 @@ func download(filePath, outputPath string, noBytes, offset int32, options []*uti
 func upload(filePath, outputPath string, noBytes, offset int32, options []*util.Options) time.Duration {
 	reqCh := make(chan proto.Message)
 	resCh := make(chan proto.Message)
-
-	bf := client.NewBigFruit()
 
 	go func() {
 		file, err := os.Open(filePath)
@@ -158,9 +152,10 @@ func upload(filePath, outputPath string, noBytes, offset int32, options []*util.
 		}
 		done <- true
 	}()
+	bigFruit := client.NewBigFruit()
 
 	t := time.Now()
-	err := bf.Call("StorageObject", "Upload", options, true, reqCh, resCh)
+	err := bigFruit.Invoke("StorageObject", "Upload", options, true, reqCh, resCh)
 	if err != nil {
 		done <- true
 		log.Println(err)
