@@ -35,7 +35,7 @@ func (e *Invoker) Invoke() {
 
 		bytes, err := e.serverRequestHandler.receive()
 		if err != nil {
-			// TODO handle error
+			// TODO handle errors
 			log.Println(err)
 			break
 		}
